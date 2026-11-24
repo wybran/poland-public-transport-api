@@ -42,13 +42,30 @@ This project is **proudly powered by Cloudflare Workers**. You can deploy your o
 You can also use these **public instances**:
 - [https://poland-public-transport.konhi.workers.dev/](https://poland-public-transport.konhi.workers.dev/)
 
+## 📖 Documentation
+- **`/docs`** — interactive Swagger UI (try every route from the browser)
+- **`/openapi`** — OpenAPI 3 spec (JSON), e.g. for generating a client
+
 ## 🔌 Routes
-### Zielona Góra
-- [/v1/zielonagora/mzk/stops](https://poland-public-transport.konhi.workers.dev/v1/zielonagora/mzk/stops)
-- [/v1/zielonagora/mzk/vehicles](https://poland-public-transport.konhi.workers.dev/v1/zielonagora/mzk/vehicles)
-- [/v1/zielonagora/mzk/infos](https://poland-public-transport.konhi.workers.dev/v1/zielonagora/mzk/stops)
-- [/v1/zielonagora/mzk/stops/:stop_id/departures](https://poland-public-transport.konhi.workers.dev/v1/zielonagora/mzk/stops/75/departures)
-- [/v1/zielonagora/mzk/stops/:stop_id/info](https://poland-public-transport.konhi.workers.dev/v1/zielonagora/mzk/stops/75/info)
+### Zielona Góra (MZK)
+| Route | Description | Cache |
+|-------|-------------|-------|
+| `GET /zg/vehicles` | All vehicles on the road: position, line, direction, delay, next course | 10 s |
+| `GET /zg/vehicles/:vehicleNumber/timetable` | Upcoming stops of the vehicle's current course with ETA (`vehicleNumber` = `vehicleId` from `/zg/vehicles`) | 10 s |
+| `GET /zg/stops` | All stops with location | 1 h |
+| `GET /zg/stops/:stopId` | Stop details and lines serving it | 1 h |
+| `GET /zg/stops/:stopId/departures` | Real-time departures from a stop | 10 s |
+| `GET /zg/trips/:tripId/track` | Stops, times and map path of a trip (trip ids come from the MZK trip planner) | 1 h |
+
+Errors are returned as `{ "error": "..." }`:
+- `400` — invalid parameter (e.g. non-numeric id)
+- `404` — unknown stop / vehicle / trip
+- `502` — MZK is down or changed its response format
+
+Example:
+```bash
+curl https://<your-instance>/zg/stops/6/departures
+```
 
 ## 🌌 Used by
 Does your project use this API? Feel free to **add it there!**
