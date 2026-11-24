@@ -1,4 +1,5 @@
 import { resolver, validator } from "hono-openapi/zod";
+import { errorResponse } from "./errors";
 import { z, zErrorResponse } from "./zod";
 
 /** OpenAPI response object for a JSON body described by a Zod schema. */
@@ -25,7 +26,7 @@ const zId = (name: string) =>
 
 /**
  * Validates a numeric path parameter and documents it in OpenAPI.
- * Responds 400 `{ error }` when it isn't a positive integer.
+ * Responds 400 `INVALID_PARAMETER` when it isn't a positive integer.
  */
 export const idParam = <K extends string>(name: K) =>
 	validator(
@@ -33,10 +34,11 @@ export const idParam = <K extends string>(name: K) =>
 		z.object({ [name]: zId(name) } as Record<K, ReturnType<typeof zId>>),
 		(result, c) => {
 			if (!result.success) {
-				return c.json(
-					{ error: `Invalid ${name}: must be a positive integer` },
-					400,
-				);
+				return errorResponse(c, 400, {
+					error: `Invalid ${name}: must be a positive integer`,
+					code: "INVALID_PARAMETER",
+					param: name,
+				});
 			}
 		},
 	);
@@ -55,7 +57,11 @@ export const slugParam = <K extends string>(name: K) =>
 		} as Record<K, z.ZodString>),
 		(result, c) => {
 			if (!result.success) {
-				return c.json({ error: `Invalid ${name}` }, 400);
+				return errorResponse(c, 400, {
+					error: `Invalid ${name}`,
+					code: "INVALID_PARAMETER",
+					param: name,
+				});
 			}
 		},
 	);
@@ -64,16 +70,18 @@ export const slugParam = <K extends string>(name: K) =>
  * Validates all query parameters of a route with ONE validator — Hono keeps
  * only the last validator's output per target, so two `validator("query")`
  * middlewares would silently drop each other's fields.
- * Responds 400 `{ error }` naming the first invalid parameter.
+ * Responds 400 `INVALID_PARAMETER` naming the first invalid parameter.
  */
 export const query = <T extends z.ZodRawShape>(shape: T) =>
 	validator("query", z.object(shape), (result, c) => {
 		if (!result.success) {
 			const issue = result.error.issues[0];
-			return c.json(
-				{ error: `Invalid ${issue?.path.join(".") ?? "query"}: ${issue?.message}` },
-				400,
-			);
+			const param = issue?.path.join(".") || "query";
+			return errorResponse(c, 400, {
+				error: `Invalid ${param}: ${issue?.message}`,
+				code: "INVALID_PARAMETER",
+				param,
+			});
 		}
 	});
 

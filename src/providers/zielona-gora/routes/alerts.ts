@@ -28,7 +28,7 @@ export const alerts = new Hono<AppEnv>()
 		describeRoute({
 			operationId: "getZgAlert",
 			description:
-				"Full text of a dispatcher message, e.g. one linked from a stop's `dispatchMessage` in /zg/stops/{stopId}/departures.",
+				"Full text of a dispatcher message, e.g. one linked from a stop's `dispatchMessage` in /v1/zg/stops/{stopId}/departures.",
 			responses: {
 				200: jsonResponse(zAlertResponse, "Announcement"),
 				...errorResponses,

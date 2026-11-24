@@ -9,6 +9,7 @@ import {
 	query,
 	zLineParam,
 } from "../../../lib/openapi";
+import { z } from "../../../lib/zod";
 import { mzkClient } from "../client";
 import { zVehicleTimetableResponse } from "../schema/vehicle-timetable";
 import { zVehiclesResponse } from "../schema/vehicles";
@@ -21,7 +22,7 @@ export const vehicles = new Hono()
 		describeRoute({
 			operationId: "getZgVehicles",
 			description:
-				"Vehicles on the road. Use `?line=27` (or `27,14`) to get only some lines — much smaller response.",
+				"Vehicles on the road. Filters (combinable): `?line=27` (or `27,14`), `?vehicle=328` (vehicleId / `vehicleNumber` from departures), `?courseId=2421` (from departures or schedules). Filtered responses are much smaller.",
 			responses: {
 				200: jsonResponse(
 					zVehiclesResponse,
@@ -31,14 +32,41 @@ export const vehicles = new Hono()
 				502: errorResponses[502],
 			},
 		}),
-		query({ line: zLineParam }),
+		query({
+			line: zLineParam,
+			vehicle: z
+				.string()
+				.regex(/^\d{1,6}(,\d{1,6}){0,49}$/, "expected e.g. 328 or 328,344")
+				.optional()
+				.transform((v) => (v ? new Set(v.split(",").map(Number)) : undefined))
+				.openapi({
+					param: { name: "vehicle", in: "query" },
+					description: "Vehicle ids (side numbers), comma-separated",
+					example: "328",
+				}),
+			courseId: z.coerce
+				.number()
+				.int()
+				.positive()
+				.optional()
+				.openapi({
+					param: { name: "courseId", in: "query" },
+					description: "The vehicle currently running this course",
+					example: 2421,
+				}),
+		}),
 		async (c) => {
-			const { line } = c.req.valid("query");
+			const { line, vehicle, courseId } = c.req.valid("query");
 			// Always fetch all vehicles (one shared upstream response) and filter here:
 			// MZK's own filter takes a single line only and would multiply upstream calls.
 			const { vehicleList } = await mzkClient.getVehicles();
 			return c.json({
-				vehicleList: vehicleList.filter((v) => matchesLine(line, v.lineNumber)),
+				vehicleList: vehicleList.filter(
+					(v) =>
+						matchesLine(line, v.lineNumber) &&
+						(!vehicle || vehicle.has(v.vehicleId)) &&
+						(courseId === undefined || v.courseId === courseId),
+				),
 			});
 		},
 	)
@@ -48,7 +76,7 @@ export const vehicles = new Hono()
 		describeRoute({
 			operationId: "getZgVehicleTimetable",
 			description:
-				"Upcoming stops of the vehicle's current course. `vehicleNumber` is `vehicleId` from /zg/vehicles.",
+				"Upcoming stops of the vehicle's current course. `vehicleNumber` is `vehicleId` from /v1/zg/vehicles.",
 			responses: {
 				200: jsonResponse(zVehicleTimetableResponse, "Upcoming stops with ETA"),
 				...errorResponses,

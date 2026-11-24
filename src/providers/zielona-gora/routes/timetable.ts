@@ -15,6 +15,7 @@ import {
 } from "../../../lib/openapi";
 import {
 	GtfsStore,
+	httpDateToIso,
 	normalizeTime,
 	todayInPoland,
 	toPath,
@@ -53,6 +54,7 @@ export const timetable = new Hono<AppEnv>()
 					version: meta.feedVersion,
 					validFrom: meta.validFrom,
 					validTo: meta.validTo,
+					publishedAt: httpDateToIso(meta.sourceLastModified),
 					generatedAt: meta.generatedAt,
 				},
 				days: days.map(({ date, dayType, serviceId }) => ({
@@ -122,7 +124,7 @@ export const timetable = new Hono<AppEnv>()
 				gtfs.lines(),
 			]);
 			const stop = stops.find((s) => s.id === stopId);
-			if (!stop) throw new NotFoundError("Stop not found");
+			if (!stop) throw new NotFoundError("Stop not found", "STOP_NOT_FOUND");
 
 			const lineName = new Map(lines.map((l) => [l.id, l.name]));
 			const departures = (
@@ -153,7 +155,7 @@ export const timetable = new Hono<AppEnv>()
 		describeRoute({
 			operationId: "getZgCourse",
 			description:
-				"Scheduled course (kurs): all stops with times and route geometry. `courseId` comes from /zg/vehicles, departures or schedules.",
+				"Scheduled course (kurs): all stops with times and route geometry. `courseId` comes from /v1/zg/vehicles, departures or schedules.",
 			responses: {
 				200: jsonResponse(zCourseResponse, "Course"),
 				...errorResponses,
@@ -199,7 +201,10 @@ export const timetable = new Hono<AppEnv>()
 					path: toPath(shape),
 				});
 			}
-			throw new NotFoundError(`Course ${courseId} doesn't run on ${date}`);
+			throw new NotFoundError(
+				`Course ${courseId} doesn't run on ${date}`,
+				"COURSE_NOT_RUNNING",
+			);
 		},
 	)
 
@@ -207,7 +212,7 @@ export const timetable = new Hono<AppEnv>()
 		"/shapes/:shapeId",
 		describeRoute({
 			operationId: "getZgShape",
-			description: "Route geometry for a shapeId from /zg/lines/{lineId}",
+			description: "Route geometry for a shapeId from /v1/zg/lines/{lineId}",
 			responses: {
 				200: jsonResponse(zShapeResponse, "Polyline"),
 				...errorResponses,

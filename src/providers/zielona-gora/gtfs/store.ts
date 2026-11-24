@@ -24,7 +24,9 @@ export class GtfsStore {
 		const res = await this.assets.fetch(`https://assets.local${path}`);
 		if (res.status === 404) throw new NotFoundError();
 		if (!res.ok) {
-			throw new UpstreamError(`Timetable data unavailable (${res.status})`);
+			throw new UpstreamError(`Timetable data unavailable (${res.status})`, {
+				code: "TIMETABLE_UNAVAILABLE",
+			});
 		}
 		return res.json<T>();
 	}
@@ -35,7 +37,9 @@ export class GtfsStore {
 		} catch (error) {
 			if (error instanceof NotFoundError) {
 				// Only happens when the feed wasn't built before `wrangler dev`/deploy
-				throw new UpstreamError("Timetable data not built — run `pnpm gtfs`");
+				throw new UpstreamError("Timetable data not built — run `pnpm gtfs`", {
+					code: "TIMETABLE_UNAVAILABLE",
+				});
 			}
 			throw error;
 		}
@@ -85,6 +89,7 @@ export class GtfsStore {
 		if (days.length === 0) {
 			throw new NotFoundError(
 				`No timetable for ${date}. Available: ${meta.validFrom} – ${meta.validTo}`,
+				"DATE_OUT_OF_RANGE",
 			);
 		}
 		return days;
@@ -112,3 +117,10 @@ export const normalizeTime = (gtfsTime: string) => {
 /** GTFS [lat, lon] → API { x: lon, y: lat } */
 export const toPath = (shape: GtfsShape) =>
 	shape.map(([lat, lon]) => ({ x: lon, y: lat }));
+
+/** HTTP date (`Mon, 23 Nov 2026 06:10:54 GMT`) → ISO 8601, or null. */
+export const httpDateToIso = (value: string | null) => {
+	if (!value) return null;
+	const date = new Date(value);
+	return Number.isNaN(date.getTime()) ? null : date.toISOString();
+};

@@ -16,9 +16,8 @@ export const zVehicle = z.object({
 	deviation: z.number().openapi({
 		description: "Deviation from schedule in seconds (negative = delay)",
 	}),
-	deviationDirection: z.string().openapi({
-		description:
-			'Deviation formatted as string, e.g. "-00:01:42" (name kept for backwards compatibility)',
+	deviationText: z.string().openapi({
+		description: 'Deviation as text, e.g. "-00:01:42"',
 	}),
 	status: z.number().openapi({
 		description:
@@ -32,7 +31,9 @@ export const zVehicle = z.object({
 	nextDirection: z.string(),
 	secondsToDeparture: z.number(),
 	vehicleType: z.string(),
-	vector: z.number(),
+	bearing: z.number().openapi({
+		description: "Heading in degrees (0 = north, clockwise); -1 when unknown",
+	}),
 	isElectric: z.boolean(),
 	finalStop: z.string(),
 	initialStop: z.string(),
@@ -89,7 +90,7 @@ const zRawVehicle = z
 			location: { x: v[9], y: v[10] },
 			previousLocation: { x: v[11], y: v[12] },
 			deviation: v[13],
-			deviationDirection: v[14],
+			deviationText: v[14],
 			status: v[15],
 			plannedStartTime: v[16],
 			nextCourseId: v[17],
@@ -99,7 +100,7 @@ const zRawVehicle = z
 			nextDirection: v[21],
 			secondsToDeparture: v[22],
 			vehicleType: v[23],
-			vector: v[27] ?? -1,
+			bearing: v[27] ?? -1,
 			isElectric: v[28] === 1,
 			finalStop: v[25],
 			initialStop: v[26],

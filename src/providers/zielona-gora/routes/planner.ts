@@ -102,7 +102,7 @@ export const planner = new Hono<AppEnv>().get(
 				return { lat, lon };
 			}
 			const stop = (await stops.stops()).find((s) => s.id === Number(point));
-			if (!stop) throw new NotFoundError(`Stop ${point} not found`);
+			if (!stop) throw new NotFoundError(`Stop ${point} not found`, "STOP_NOT_FOUND");
 			return { lat: stop.lat, lon: stop.lon };
 		};
 
@@ -123,6 +123,7 @@ export const planner = new Hono<AppEnv>().get(
 			await stops.servicesOn(date);
 			throw new NotFoundError(
 				"No connection found — try a different time, more transfers or a longer walk",
+				"NO_CONNECTION",
 			);
 		}
 		return c.json(result);

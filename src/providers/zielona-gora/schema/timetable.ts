@@ -15,7 +15,14 @@ export const zCalendarResponse = z.object({
 		version: z.string(),
 		validFrom: z.string(),
 		validTo: z.string(),
-		generatedAt: z.string(),
+		publishedAt: z.string().nullable().openapi({
+			description:
+				"When MZK published this timetable (ISO 8601) — show this as the timetable's date",
+			example: "2026-11-23T06:10:54.000Z",
+		}),
+		generatedAt: z.string().openapi({
+			description: "When this API last rebuilt the data (changes on every deploy)",
+		}),
 	}),
 	days: z.array(
 		z.object({
@@ -38,7 +45,7 @@ export const zLineResponse = z.object({
 			directionId: z.number(),
 			headsign: z.string(),
 			shapeId: z.string().nullable().openapi({
-				description: "Use with /zg/shapes/{shapeId} to draw the route",
+				description: "Use with /v1/zg/shapes/{shapeId} to draw the route",
 			}),
 			tripCount: z.number().openapi({
 				description: "Trips in the feed following this stop sequence — the most common variants come first",
@@ -64,7 +71,7 @@ export const zScheduleResponse = z.object({
 			lineNumber: z.string(),
 			headsign: z.string(),
 			courseId: z.number().openapi({
-				description: "Same as courseId in the live API — use with /zg/courses/{courseId}",
+				description: "Same as courseId in the live API — use with /v1/zg/courses/{courseId}",
 			}),
 			onRequest: z.boolean().openapi({ description: "Request stop (na żądanie)" }),
 			dropOffOnly: z.boolean(),

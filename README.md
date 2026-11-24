@@ -48,56 +48,71 @@ You can also use these **public instances**:
 - **`/openapi`** — OpenAPI 3 spec (JSON), e.g. for generating a client
 
 ## 🔌 Routes
+All routes are versioned under `/v1`. Within a version fields and error codes are only ever **added** — never renamed or removed; breaking changes would go to `/v2`. The old unversioned `/zg/...` paths still work but are deprecated (`Deprecation: true` header, `Link` to the `/v1` path).
+
 ### Zielona Góra (MZK)
 
 **Live** — scraped from MZK's passenger information system (rj.mzk.zgora.pl):
 
 | Route | Description | Cache |
 |-------|-------------|-------|
-| `GET /zg/vehicles?line=` | Vehicles on the road: position, line, direction, delay, `courseId`. `?line=27` or `27,14` for some lines only | 10 s |
-| `GET /zg/vehicles/:vehicleNumber/timetable` | Upcoming stops of the vehicle's current course with ETA (`vehicleNumber` = `vehicleId` from `/zg/vehicles`) | 10 s |
-| `GET /zg/stops` | All stops with location | 1 h |
-| `GET /zg/stops/search?q=&near=` | Find stops by name (diacritics-insensitive, `q=lezyca` finds Łężyca) and/or nearest to `lat,lon` | 5 min |
-| `GET /zg/stops/:stopId` | Stop details and lines serving it | 1 h |
-| `GET /zg/alerts` | Current MZK announcements (detours, timetable changes); empty when there are none | 1 min |
-| `GET /zg/alerts/:alertId` | Full text of a dispatcher message | 1 min |
-| `GET /zg/stops/:stopId/departures` | Real-time departures from a stop | 10 s |
-| `GET /zg/planner?from=&to=` | Trip planner: connections between stops (`6`) or points (`51.93,15.49`) with walking, transfers, times and map paths. Optional `date`, `time`, `maxTransfers` (0–4), `walk` (0–2), `lowFloor` | 10 s |
-| `GET /zg/trips/:tripId/track?timetableId=` | Full course of a planner leg: stops, times, map path (`tripId`, `timetableId` from `/zg/planner`) | 1 h |
+| `GET /v1/zg/status` | Health in one call: is MZK answering, is the timetable valid today and for how many more days, active announcements. Always `200` | 10 s |
+| `GET /v1/zg/vehicles?line=&vehicle=&courseId=` | Vehicles on the road: position, bearing, line, direction, delay, `courseId`. Filters (combinable): `line=27` or `27,14`, `vehicle=328`, `courseId=2421` | 10 s |
+| `GET /v1/zg/vehicles/:vehicleNumber/timetable` | Upcoming stops of the vehicle's current course with ETA (`vehicleNumber` = `vehicleId` from `/zg/vehicles`) | 10 s |
+| `GET /v1/zg/stops` | All stops with location | 1 h |
+| `GET /v1/zg/stops/search?q=&near=` | Find stops by name (diacritics-insensitive, `q=lezyca` finds Łężyca) and/or nearest to `lat,lon` | 5 min |
+| `GET /v1/zg/stops/:stopId` | Stop details and lines serving it | 1 h |
+| `GET /v1/zg/alerts` | Current MZK announcements (detours, timetable changes); empty when there are none | 1 min |
+| `GET /v1/zg/alerts/:alertId` | Full text of a dispatcher message | 1 min |
+| `GET /v1/zg/stops/:stopId/departures` | Real-time departures from a stop | 10 s |
+| `GET /v1/zg/planner?from=&to=` | Trip planner: connections between stops (`6`) or points (`51.93,15.49`) with walking, transfers, times and map paths. Optional `date`, `time`, `maxTransfers` (0–4), `walk` (0–2), `lowFloor` | 10 s |
+| `GET /v1/zg/trips/:tripId/track?timetableId=` | Full course of a planner leg: stops, times, map path (`tripId`, `timetableId` from `/zg/planner`) | 1 h |
 
 **Timetable** — from MZK's official [GTFS feed](https://www.mzk.zgora.pl), rebuilt daily. `?date=YYYY-MM-DD` defaults to today (Europe/Warsaw):
 
 | Route | Description | Cache |
 |-------|-------------|-------|
-| `GET /zg/calendar` | Days covered by the timetable and their day type (`RO`, `SW`, `DS`, `RW`) | 5 min |
-| `GET /zg/stops/with-lines?line=` | All stops with the lines serving them, in one request — for map markers; `?line=27` keeps only that line's stops | 5 min |
-| `GET /zg/lines` | All lines | 5 min |
-| `GET /zg/lines/:lineId` | Line's route variants: stop sequences per direction, with `shapeId` | 5 min |
-| `GET /zg/stops/:stopId/schedule?date=&line=` | Full-day scheduled departures from a stop; `?line=27` for a single line's timetable | 5 min |
-| `GET /zg/courses/:courseId?date=` | One course (kurs): all stops with times and route geometry | 5 min |
-| `GET /zg/shapes/:shapeId` | Route geometry | 5 min |
+| `GET /v1/zg/calendar` | Days covered by the timetable and their day type (`RO`, `SW`, `DS`, `RW`) | 5 min |
+| `GET /v1/zg/stops/with-lines?line=` | All stops with the lines serving them, in one request — for map markers; `?line=27` keeps only that line's stops | 5 min |
+| `GET /v1/zg/lines` | All lines | 5 min |
+| `GET /v1/zg/lines/:lineId` | Line's route variants: stop sequences per direction, with `shapeId` | 5 min |
+| `GET /v1/zg/stops/:stopId/schedule?date=&line=` | Full-day scheduled departures from a stop; `?line=27` for a single line's timetable | 5 min |
+| `GET /v1/zg/courses/:courseId?date=` | One course (kurs): all stops with times and route geometry | 5 min |
+| `GET /v1/zg/shapes/:shapeId` | Route geometry | 5 min |
 
-Stop ids and `courseId` are the same in both — e.g. take `courseId` of a live vehicle and get its whole course from `/zg/courses/:courseId`.
+Stop ids and `courseId` are the same in both — e.g. take `courseId` of a live vehicle and get its whole course from `/v1/zg/courses/:courseId`.
 Times after midnight are returned as `00:04` with `"nextDay": true`.
 
 Responses are cached at Cloudflare's edge (per data center). Concurrent requests for the same data share one upstream call, and if MZK is down the last good response is served for up to 5 min (real-time) / 24 h (stops, tracks, timetable). Response headers:
 - `X-Cache` — `HIT`, `MISS`, `STALE` (MZK failed, serving last good data) or `BYPASS`
 - `X-Data-Age` — seconds since the data was fetched from MZK
-- `X-Data-Source: gtfs` (status `203`) — MZK was unreachable, so `/zg/stops` was built from the GTFS timetable (same ids and names, some live-only fields empty)
+- `X-Data-Source: gtfs` (status `203`) — MZK was unreachable, so `/v1/zg/stops` was built from the GTFS timetable (same ids and names, some live-only fields empty)
 
 Requests to MZK time out after 4 s and are retried once — MZK sometimes hangs for Cloudflare's servers while an immediate retry works.
 
 Apps may send `X-App-Name` / `X-App-Version` headers; they're recorded in traces to tell app versions apart. No user or device identifiers are collected.
 
-Errors are returned as `{ "error": "..." }`:
-- `400` — invalid parameter (e.g. non-numeric id, malformed date)
-- `404` — unknown stop / vehicle / trip / course, or date outside the timetable
-- `502` — MZK is down or changed its response format
+Errors are returned as `{ "error": "...", "code": "...", "param": "..." }`. **Switch on `code`** (stable, never renamed) and show your own message; `error` is an English hint for developers.
+
+| Status | `code` | When |
+|--------|--------|------|
+| 400 | `INVALID_PARAMETER` | Bad parameter — its name is in `param` |
+| 404 | `ROUTE_NOT_FOUND` | Unknown URL |
+| 404 | `NOT_FOUND` | Unknown id (stop, vehicle, line, alert…) |
+| 404 | `STOP_NOT_FOUND` | Unknown stop in schedule / planner |
+| 404 | `TRIP_NOT_FOUND` | Unknown planner trip |
+| 404 | `COURSE_NOT_RUNNING` | Course doesn't run on that date |
+| 404 | `DATE_OUT_OF_RANGE` | Date outside the published timetable |
+| 404 | `NO_CONNECTION` | Planner found no connection |
+| 502 | `UPSTREAM_TIMEOUT` | MZK didn't answer in time |
+| 502 | `UPSTREAM_ERROR` | MZK failed or changed its format |
+| 502 | `TIMETABLE_UNAVAILABLE` | Timetable data missing on our side |
+| 500 | `INTERNAL_ERROR` | Bug — please report |
 
 Example:
 ```bash
-curl "https://api.mzk.wybran.dev/zg/stops/6/schedule?date=2026-11-28&line=27"
-curl "https://api.mzk.wybran.dev/zg/planner?from=6&to=51.9332,15.5866&time=10:00"
+curl "https://api.mzk.wybran.dev/v1/zg/stops/6/schedule?date=2026-11-28&line=27"
+curl "https://api.mzk.wybran.dev/v1/zg/planner?from=6&to=51.9332,15.5866&time=10:00"
 ```
 
 ## 🛠 Development

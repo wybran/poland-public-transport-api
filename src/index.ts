@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { registerDocs } from "./lib/docs";
 import type { AppEnv } from "./lib/env";
-import { errorHandler } from "./lib/errors";
+import { errorHandler, errorResponse } from "./lib/errors";
 import { cors } from "./lib/http";
 import { annotate } from "./lib/tracing";
 import { zielonaGora } from "./providers/zielona-gora";
@@ -19,8 +19,23 @@ app.use(async (c, next) => {
 	await next();
 });
 app.onError(errorHandler);
-app.notFound((c) => c.json({ error: "Not found" }, 404));
-app.route("/zg", zielonaGora);
+app.notFound((c) =>
+	errorResponse(c, 404, { error: "Unknown route", code: "ROUTE_NOT_FOUND" }),
+);
+// Versioned API. Within a version fields and error codes are only ever added,
+// never renamed or removed — breaking changes go to /v2.
+app.route("/v1/zg", zielonaGora);
+
+// Unversioned paths from before /v1 — served by v1, marked deprecated.
+app.all("/zg/*", async (c) => {
+	const url = new URL(c.req.url);
+	url.pathname = `/v1${url.pathname}`;
+	const res = await app.fetch(new Request(url, c.req.raw), c.env, c.executionCtx);
+	const out = new Response(res.body, res);
+	out.headers.set("Deprecation", "true");
+	out.headers.set("Link", `<${url.pathname}>; rel="successor-version"`);
+	return out;
+});
 
 registerDocs(app);
 

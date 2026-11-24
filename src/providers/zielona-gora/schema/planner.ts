@@ -24,14 +24,14 @@ const zRow = z
 		z.number(), // 13 seconds from now until this time
 		z.string(), // 14 date when not the requested day
 		z.number(), // 15 transfer number
-		z.number(), // 16 planner trip id (use with /zg/trips/{tripId}/track)
+		z.number(), // 16 planner trip id (use with /v1/zg/trips/{tripId}/track)
 		z.number().nullable(), // 17 stop sequence in the trip
 		z.number(), // 18 line type
 		z.number(), // 19 vehicle side number (0 = unknown)
 		z.number(), // 20 timetable id
 		z.number(), // 21 request stop (na żądanie)
 		z.number(), // 22 zot flag
-		z.number(), // 23 route id (as in /zg/stops/{id} lines)
+		z.number(), // 23 route id (as in /v1/zg/stops/{id} lines)
 		z.number(), // 24 direction id
 	])
 	.rest(z.unknown());
@@ -75,7 +75,7 @@ const zBusLeg = z.object({
 	vehicleNumber: z.number().nullable().openapi({ description: "Known for vehicles already on the road" }),
 	deviationSeconds: z.number().openapi({ description: "Live delay (negative) / early (positive)" }),
 	tripId: z.number().openapi({
-		description: "Use with /zg/trips/{tripId}/track?timetableId= for the full course",
+		description: "Use with /v1/zg/trips/{tripId}/track?timetableId= for the full course",
 	}),
 	timetableId: z.number(),
 	routeId: z.number(),
@@ -200,9 +200,9 @@ export const parsePlannerResponse = (
 ): PlannerResponse => {
 	const errorCode = /<kod_bledu>\s*(\d+)\s*<\/kod_bledu>/.exec(text)?.[1];
 	if (errorCode === "1") {
-		throw new NotFoundError("Date is outside the timetable");
+		throw new NotFoundError("Date is outside the timetable", "DATE_OUT_OF_RANGE");
 	}
-	if (errorCode) throw new NotFoundError("No connection found");
+	if (errorCode) throw new NotFoundError("No connection found", "NO_CONNECTION");
 
 	const literal = /<!\[CDATA\[([\s\S]*)\]\]>/.exec(text)?.[1] ?? "[]";
 	const raw = z.array(zRawConnection).parse(JSON.parse(jsLiteralToJson(literal)));

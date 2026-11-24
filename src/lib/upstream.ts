@@ -13,7 +13,7 @@ type EndpointConfig<P, S extends z.ZodTypeAny> = {
 	/**
 	 * Cache the raw upstream body (per data center) for this many seconds, so
 	 * routes deriving different responses from one upstream call share it
-	 * (e.g. /zg/vehicles?line=27 and ?line=14 both read the full vehicle list).
+	 * (e.g. /v1/zg/vehicles?line=27 and ?line=14 both read the full vehicle list).
 	 */
 	cacheSeconds?: number;
 } & (
@@ -74,7 +74,10 @@ const fetchText = async (url: string): Promise<string> => {
 		isTimeout(lastError)
 			? `Upstream timed out (${ATTEMPTS} × ${ATTEMPT_TIMEOUT_MS / 1000}s): ${url}`
 			: `Upstream request failed: ${url}`,
-		{ cause: lastError },
+		{
+			cause: lastError,
+			code: isTimeout(lastError) ? "UPSTREAM_TIMEOUT" : "UPSTREAM_ERROR",
+		},
 	);
 };
 

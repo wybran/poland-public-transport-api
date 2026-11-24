@@ -17,7 +17,7 @@ export const trips = new Hono().get(
 	describeRoute({
 		operationId: "getZgTripTrack",
 		description:
-			"Stops, times and map path of a trip. `tripId` and `timetableId` come from a bus leg of /zg/planner.",
+			"Stops, times and map path of a trip. `tripId` and `timetableId` come from a bus leg of /v1/zg/planner.",
 		responses: {
 			200: jsonResponse(zTripTrackResponse, "Trip track"),
 			...errorResponses,
@@ -41,7 +41,7 @@ export const trips = new Hono().get(
 		const { tripId } = c.req.valid("param");
 		const { timetableId } = c.req.valid("query");
 		const track = await mzkClient.getTripTrack({ tripId, timetableId });
-		if (!track) throw new NotFoundError("Trip not found");
+		if (!track) throw new NotFoundError("Trip not found", "TRIP_NOT_FOUND");
 		return c.json(track);
 	},
 );
