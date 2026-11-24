@@ -64,7 +64,7 @@ All routes are versioned under `/v1`. Within a version fields and error codes ar
 | `GET /v1/zg/stops/:stopId` | Stop details and lines serving it | 1 h |
 | `GET /v1/zg/alerts` | Current MZK announcements (detours, timetable changes); empty when there are none | 1 min |
 | `GET /v1/zg/alerts/:alertId` | Full text of a dispatcher message | 1 min |
-| `GET /v1/zg/stops/:stopId/departures` | Real-time departures from a stop | 10 s |
+| `GET /v1/zg/stops/:stopId/departures?line=&courseId=` | Real-time departures from a stop. `courseId=2421` returns just that course (a few hundred bytes — for live activities / ongoing notifications); empty list = already left | 10 s |
 | `GET /v1/zg/departures/nearby?near=lat,lon` | Real-time departures from the nearest stops in one call. Optional `radius` (m, default 500), `stops` (max 8, default 4), `perStop` (default 6), `line` | 10 s |
 | `GET /v1/zg/fares` | Ticket prices in grosze (copied from [mzk.zgora.pl/cennik](https://www.mzk.zgora.pl/cennik) — MZK has no fares API). Planner connections include `ticketTimeSeconds` to compare with `validityMinutes` | 1 h |
 | `GET /v1/zg/planner?from=&to=` | Trip planner: connections between stops (`6`) or points (`51.93,15.49`) with walking, transfers, times and map paths. Optional `date`, `time`, `maxTransfers` (0–4), `walk` (0–2), `lowFloor` | 10 s |

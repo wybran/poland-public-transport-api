@@ -206,7 +206,8 @@ export const stops = new Hono<AppEnv>()
 		"/:stopId/departures",
 		describeRoute({
 			operationId: "getZgStopDepartures",
-			description: "Real-time departures from a stop",
+			description:
+				"Real-time departures from a stop. `?courseId=2421` returns just that course — a tiny response for live activities / ongoing notifications polling one bus; an empty list means it has already left (or isn't shown yet). `?line=27` keeps only those lines.",
 			responses: {
 				200: jsonResponse(zDeparturesResponse, "Next departures"),
 				...errorResponses,
@@ -214,8 +215,35 @@ export const stops = new Hono<AppEnv>()
 		}),
 		edgeCache(CACHE.REALTIME),
 		idParam("stopId"),
+		query({
+			line: zLineParam,
+			courseId: z.coerce
+				.number()
+				.int()
+				.positive()
+				.optional()
+				.openapi({
+					param: { name: "courseId", in: "query" },
+					description: "Only this course (from departures, schedules or /v1/zg/vehicles)",
+					example: 2421,
+				}),
+		}),
 		async (c) => {
 			const { stopId } = c.req.valid("param");
-			return c.json(await mzkClient.getDepartures({ stopId }));
+			const { line, courseId } = c.req.valid("query");
+			const result = await mzkClient.getDepartures({ stopId });
+			if (!line && courseId === undefined) return c.json(result);
+
+			return c.json({
+				...result,
+				days: result.days.map((day) => ({
+					...day,
+					departures: day.departures.filter(
+						(d) =>
+							matchesLine(line, d.lineNumber) &&
+							(courseId === undefined || d.courseId === courseId),
+					),
+				})),
+			});
 		},
 	);
