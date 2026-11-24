@@ -5,6 +5,9 @@
  *   node scripts/gtfs/build.ts                  # download from MZK
  *   node scripts/gtfs/build.ts --zip feed.zip   # use a local file
  *   node scripts/gtfs/build.ts --out public     # output root (default: public)
+ *   node scripts/gtfs/build.ts --cache-dir .gtfs-cache
+ *       keep the last downloaded zip there and fall back to it when MZK is
+ *       unreachable (their server often times out for non-Polish IPs)
  *
  * Requires Node >= 23.6 (runs TypeScript natively).
  */
@@ -34,6 +37,7 @@ const { values: args } = parseArgs({
 	options: {
 		zip: { type: "string" },
 		out: { type: "string", default: "public" },
+		"cache-dir": { type: "string" },
 	},
 });
 
@@ -45,6 +49,35 @@ type Source = {
 	lastModified: string | null;
 };
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+const download = async (): Promise<Omit<Source, "files"> & { zip: Uint8Array }> => {
+	const delays = [0, 5_000, 15_000, 30_000];
+	let lastError: unknown;
+	for (const [attempt, delay] of delays.entries()) {
+		await sleep(delay);
+		try {
+			const res = await fetch(SOURCE_URL, {
+				headers: { "User-Agent": "poland-public-transport-api GTFS builder" },
+				signal: AbortSignal.timeout(60_000),
+			});
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
+			return {
+				zip: new Uint8Array(await res.arrayBuffer()),
+				etag: res.headers.get("etag"),
+				lastModified: res.headers.get("last-modified"),
+			};
+		} catch (error) {
+			lastError = error;
+			console.warn(
+				`GTFS download attempt ${attempt + 1}/${delays.length} failed:`,
+				error instanceof Error ? (error.cause ?? error.message) : error,
+			);
+		}
+	}
+	throw new Error("GTFS download failed", { cause: lastError });
+};
+
 const loadSource = async (): Promise<Source> => {
 	if (args.zip) {
 		return {
@@ -53,15 +86,28 @@ const loadSource = async (): Promise<Source> => {
 			lastModified: null,
 		};
 	}
-	const res = await fetch(SOURCE_URL, {
-		headers: { "User-Agent": "poland-public-transport-api GTFS builder" },
-	});
-	if (!res.ok) throw new Error(`GTFS download failed: ${res.status}`);
-	return {
-		files: unzipSync(new Uint8Array(await res.arrayBuffer())),
-		etag: res.headers.get("etag"),
-		lastModified: res.headers.get("last-modified"),
-	};
+
+	const cacheDir = args["cache-dir"];
+	const cachedZip = cacheDir && join(cacheDir, "feed.zip");
+	const cachedMeta = cacheDir && join(cacheDir, "feed.json");
+
+	try {
+		const { zip, etag, lastModified } = await download();
+		if (cachedZip && cachedMeta) {
+			await mkdir(cacheDir, { recursive: true });
+			await writeFile(cachedZip, zip);
+			await writeFile(cachedMeta, JSON.stringify({ etag, lastModified }));
+		}
+		return { files: unzipSync(zip), etag, lastModified };
+	} catch (error) {
+		if (!cachedZip || !cachedMeta) throw error;
+		console.warn(`MZK unreachable — building from cached ${cachedZip}`);
+		const meta = JSON.parse(await readFile(cachedMeta, "utf8")) as {
+			etag: string | null;
+			lastModified: string | null;
+		};
+		return { files: unzipSync(await readFile(cachedZip)), ...meta };
+	}
 };
 
 const source = await loadSource();

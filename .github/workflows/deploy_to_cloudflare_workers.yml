@@ -32,7 +32,9 @@ jobs:
       - name: Check GTFS feed version
         id: gtfs
         run: |
-          etag=$(curl -sfI "$GTFS_URL" | grep -i '^etag:' | cut -d' ' -f2- | tr -cd 'A-Za-z0-9-')
+          # MZK's server often times out for non-Polish IPs — retry a few times
+          etag=$(curl -sfI --connect-timeout 20 --retry 4 --retry-delay 10 --retry-all-errors "$GTFS_URL" \
+            | grep -i '^etag:' | cut -d' ' -f2- | tr -cd 'A-Za-z0-9-' || true)
           echo "etag=${etag:-unknown}" >> "$GITHUB_OUTPUT"
 
       # On the daily run, skip everything if this feed version was already deployed
@@ -47,7 +49,9 @@ jobs:
 
       - name: Decide
         id: run
-        run: echo "deploy=${{ github.event_name != 'schedule' || steps.seen.outputs.cache-hit != 'true' }}" >> "$GITHUB_OUTPUT"
+        # Daily run: skip when this feed is already live, or when MZK is unreachable
+        # (we couldn't tell whether anything changed). Pushes always deploy.
+        run: echo "deploy=${{ github.event_name != 'schedule' || (steps.seen.outputs.cache-hit != 'true' && steps.gtfs.outputs.etag != 'unknown') }}" >> "$GITHUB_OUTPUT"
 
       - uses: pnpm/action-setup@v4
         if: steps.run.outputs.deploy == 'true'
@@ -66,9 +70,36 @@ jobs:
         if: steps.run.outputs.deploy == 'true'
         run: pnpm typecheck
 
+      # Last successfully downloaded feed — used when MZK is unreachable,
+      # so code changes still deploy with the previous timetable.
+      - name: Restore last GTFS feed
+        if: steps.run.outputs.deploy == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: .gtfs-cache
+          key: gtfs-zip-${{ steps.gtfs.outputs.etag }}
+          restore-keys: gtfs-zip-
+
       - name: Build GTFS timetable
         if: steps.run.outputs.deploy == 'true'
-        run: pnpm gtfs
+        run: node scripts/gtfs/build.ts --cache-dir .gtfs-cache
+
+      # ETag of the feed actually built (differs from the one checked above
+      # when MZK was unreachable and the cached feed was used)
+      - name: Built feed version
+        id: built
+        if: steps.run.outputs.deploy == 'true'
+        run: |
+          etag=$(node -p "require('./public/gtfs/meta.json').sourceEtag ?? ''" | tr -cd 'A-Za-z0-9-')
+          echo "etag=${etag:-unknown}" >> "$GITHUB_OUTPUT"
+
+      - name: Save GTFS feed
+        if: steps.run.outputs.deploy == 'true' && steps.built.outputs.etag != 'unknown'
+        uses: actions/cache/save@v4
+        continue-on-error: true # key already exists when the feed didn't change
+        with:
+          path: .gtfs-cache
+          key: gtfs-zip-${{ steps.built.outputs.etag }}
 
       - name: Deploy to Cloudflare Workers
         if: steps.run.outputs.deploy == 'true'
@@ -78,11 +109,12 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
 
       - name: Remember deployed feed version
-        if: steps.run.outputs.deploy == 'true' && steps.gtfs.outputs.etag != 'unknown'
-        run: echo "${{ steps.gtfs.outputs.etag }}" > .gtfs-deployed
+        if: steps.run.outputs.deploy == 'true' && steps.built.outputs.etag != 'unknown'
+        run: echo "${{ steps.built.outputs.etag }}" > .gtfs-deployed
 
       - uses: actions/cache/save@v4
-        if: steps.run.outputs.deploy == 'true' && steps.gtfs.outputs.etag != 'unknown'
+        if: steps.run.outputs.deploy == 'true' && steps.built.outputs.etag != 'unknown'
+        continue-on-error: true
         with:
           path: .gtfs-deployed
-          key: gtfs-${{ steps.gtfs.outputs.etag }}
+          key: gtfs-${{ steps.built.outputs.etag }}

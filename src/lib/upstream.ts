@@ -12,30 +12,31 @@ type EndpointConfig<P, S extends z.ZodTypeAny> = {
 } & ({ format: "json" } | { format: "xml"; xmlParser: XMLParser });
 
 /**
- * Requests to the same URL that are in flight right now. When the cache expires
- * and many clients ask at once, they share a single upstream request.
- * Scope: one Worker isolate (an isolate serves many concurrent requests).
+ * MZK normally answers in < 1 s but sometimes hangs for 20+ s when called from
+ * Cloudflare. Give up early so the edge cache can serve its stale copy instead.
  */
-const inFlight = new Map<string, Promise<string>>();
+const UPSTREAM_TIMEOUT_MS = 8_000;
 
-const fetchText = (url: string): Promise<string> => {
-	const pending = inFlight.get(url);
-	if (pending) return pending;
-
-	const request = wretch(url)
+// Note: no in-memory sharing of in-flight requests between clients. In Workers
+// a fetch belongs to the request that started it; when that client disconnects
+// the fetch is cancelled and every other request awaiting it fails with a 500.
+const fetchText = (url: string): Promise<string> =>
+	wretch(url)
 		.headers(REQUEST_HEADERS)
+		.options({ signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS) })
 		.get()
 		.text()
 		.catch((error: unknown) => {
-			throw new UpstreamError(`Upstream request failed: ${url}`, {
-				cause: error,
-			});
-		})
-		.finally(() => inFlight.delete(url));
-
-	inFlight.set(url, request);
-	return request;
-};
+			const timedOut =
+				error instanceof Error &&
+				(error.name === "TimeoutError" || error.name === "AbortError");
+			throw new UpstreamError(
+				timedOut
+					? `Upstream timed out after ${UPSTREAM_TIMEOUT_MS / 1000}s: ${url}`
+					: `Upstream request failed: ${url}`,
+				{ cause: error },
+			);
+		});
 
 /**
  * Builds a typed function that fetches an upstream endpoint,
