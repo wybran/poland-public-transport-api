@@ -17,6 +17,10 @@ on:
     - cron: "15 13 * * *" # 14:15 / 15:15 — after MZK office hours, when new feeds get published
   workflow_dispatch:
 
+# Least privilege: the job only reads the repo (deploy uses the Cloudflare token).
+permissions:
+  contents: read
+
 concurrency:
   group: deploy
   cancel-in-progress: false
@@ -28,8 +32,14 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     name: Deploy
+    # Cloudflare secrets live in the "production" environment, limited to main
+    environment: production
     steps:
-      - uses: actions/checkout@v7
+      # Actions are pinned to commit SHAs (a moved tag can't inject code);
+      # Dependabot bumps them, see .github/dependabot.yml
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Check GTFS feed version
         id: gtfs
@@ -43,7 +53,7 @@ jobs:
       - name: Was this feed already deployed?
         id: seen
         if: github.event_name == 'schedule'
-        uses: actions/cache/restore@v6
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .gtfs-deployed
           key: gtfs-${{ steps.gtfs.outputs.etag }}
@@ -55,10 +65,10 @@ jobs:
         # (we couldn't tell whether anything changed). Pushes always deploy.
         run: echo "deploy=${{ github.event_name != 'schedule' || (steps.seen.outputs.cache-hit != 'true' && steps.gtfs.outputs.etag != 'unknown') }}" >> "$GITHUB_OUTPUT"
 
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         if: steps.run.outputs.deploy == 'true'
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         if: steps.run.outputs.deploy == 'true'
         with:
           node-version: 24
@@ -76,7 +86,7 @@ jobs:
       # so code changes still deploy with the previous timetable.
       - name: Restore last GTFS feed
         if: steps.run.outputs.deploy == 'true'
-        uses: actions/cache/restore@v6
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .gtfs-cache
           key: gtfs-zip-${{ steps.gtfs.outputs.etag }}
@@ -97,7 +107,7 @@ jobs:
 
       - name: Save GTFS feed
         if: steps.run.outputs.deploy == 'true' && steps.built.outputs.etag != 'unknown'
-        uses: actions/cache/save@v6
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         continue-on-error: true # key already exists when the feed didn't change
         with:
           path: .gtfs-cache
@@ -114,7 +124,7 @@ jobs:
         if: steps.run.outputs.deploy == 'true' && steps.built.outputs.etag != 'unknown'
         run: echo "${{ steps.built.outputs.etag }}" > .gtfs-deployed
 
-      - uses: actions/cache/save@v6
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         if: steps.run.outputs.deploy == 'true' && steps.built.outputs.etag != 'unknown'
         continue-on-error: true
         with:
