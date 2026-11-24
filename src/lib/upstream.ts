@@ -7,11 +7,35 @@ import { REQUEST_HEADERS } from "./http";
 type EndpointConfig<P, S extends z.ZodTypeAny> = {
 	baseUrl: string;
 	path: (params: P) => string;
-	/** Edge cache TTL for the upstream response */
-	cacheSeconds: number;
 	/** Parses the upstream body and transforms it into our response shape */
 	schema: S;
 } & ({ format: "json" } | { format: "xml"; xmlParser: XMLParser });
+
+/**
+ * Requests to the same URL that are in flight right now. When the cache expires
+ * and many clients ask at once, they share a single upstream request.
+ * Scope: one Worker isolate (an isolate serves many concurrent requests).
+ */
+const inFlight = new Map<string, Promise<string>>();
+
+const fetchText = (url: string): Promise<string> => {
+	const pending = inFlight.get(url);
+	if (pending) return pending;
+
+	const request = wretch(url)
+		.headers(REQUEST_HEADERS)
+		.get()
+		.text()
+		.catch((error: unknown) => {
+			throw new UpstreamError(`Upstream request failed: ${url}`, {
+				cause: error,
+			});
+		})
+		.finally(() => inFlight.delete(url));
+
+	inFlight.set(url, request);
+	return request;
+};
 
 /**
  * Builds a typed function that fetches an upstream endpoint,
@@ -27,21 +51,7 @@ export const createEndpoint =
 	async (params: P): Promise<z.output<S>> => {
 		const url = `${config.baseUrl}${config.path(params)}`;
 
-		let text: string;
-		try {
-			text = await wretch(url)
-				.headers(REQUEST_HEADERS)
-				// `cf` is a Workers fetch option, not a header
-				.options({
-					cf: { cacheEverything: true, cacheTtl: config.cacheSeconds },
-				})
-				.get()
-				.text();
-		} catch (error) {
-			throw new UpstreamError(`Upstream request failed: ${url}`, {
-				cause: error,
-			});
-		}
+		const text = await fetchText(url);
 
 		// Upstreams tend to answer unknown ids with an empty body (200/204)
 		if (text.trim() === "") {

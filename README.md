@@ -57,6 +57,10 @@ You can also use these **public instances**:
 | `GET /zg/stops/:stopId/departures` | Real-time departures from a stop | 10 s |
 | `GET /zg/trips/:tripId/track` | Stops, times and map path of a trip (trip ids come from the MZK trip planner) | 1 h |
 
+Responses are cached at Cloudflare's edge (per data center). Concurrent requests for the same data share one upstream call, and if MZK is down the last good response is served for up to 5 min (real-time) / 24 h (stops, tracks). Response headers:
+- `X-Cache` — `HIT`, `MISS`, `STALE` (MZK failed, serving last good data) or `BYPASS`
+- `X-Data-Age` — seconds since the data was fetched from MZK
+
 Errors are returned as `{ "error": "..." }`:
 - `400` — invalid parameter (e.g. non-numeric id)
 - `404` — unknown stop / vehicle / trip

@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { CACHE_SECONDS, cacheControl } from "../../../lib/http";
+import { CACHE, edgeCache } from "../../../lib/cache";
 import { errorResponses, idParam, jsonResponse } from "../../../lib/openapi";
 import { mzkClient } from "../client";
 import { zDeparturesResponse } from "../schema/departures";
@@ -17,7 +17,7 @@ export const stops = new Hono()
 				502: errorResponses[502],
 			},
 		}),
-		cacheControl(CACHE_SECONDS.STATIC),
+		edgeCache(CACHE.STATIC),
 		async (c) => c.json({ stops: await mzkClient.getStops() }),
 	)
 
@@ -31,7 +31,7 @@ export const stops = new Hono()
 				...errorResponses,
 			},
 		}),
-		cacheControl(CACHE_SECONDS.STATIC),
+		edgeCache(CACHE.STATIC),
 		idParam("stopId"),
 		async (c) => {
 			const { stopId } = c.req.valid("param");
@@ -49,7 +49,7 @@ export const stops = new Hono()
 				...errorResponses,
 			},
 		}),
-		cacheControl(CACHE_SECONDS.REALTIME),
+		edgeCache(CACHE.REALTIME),
 		idParam("stopId"),
 		async (c) => {
 			const { stopId } = c.req.valid("param");

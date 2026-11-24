@@ -1,13 +1,13 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
-import { CACHE_SECONDS, cacheControl } from "../../../lib/http";
+import { CACHE, edgeCache } from "../../../lib/cache";
 import { errorResponses, idParam, jsonResponse } from "../../../lib/openapi";
 import { mzkClient } from "../client";
 import { zVehicleTimetableResponse } from "../schema/vehicle-timetable";
 import { zVehiclesResponse } from "../schema/vehicles";
 
 export const vehicles = new Hono()
-	.use(cacheControl(CACHE_SECONDS.REALTIME))
+	.use(edgeCache(CACHE.REALTIME))
 
 	.get(
 		"/",

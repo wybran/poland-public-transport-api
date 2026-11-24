@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { NotFoundError } from "../../../lib/errors";
-import { CACHE_SECONDS, cacheControl } from "../../../lib/http";
+import { CACHE, edgeCache } from "../../../lib/cache";
 import { errorResponses, idParam, jsonResponse } from "../../../lib/openapi";
 import { mzkClient } from "../client";
 import { zTripTrackResponse } from "../schema/trip-track";
@@ -17,7 +17,7 @@ export const trips = new Hono().get(
 			...errorResponses,
 		},
 	}),
-	cacheControl(CACHE_SECONDS.STATIC),
+	edgeCache(CACHE.STATIC),
 	idParam("tripId"),
 	async (c) => {
 		const { tripId } = c.req.valid("param");
