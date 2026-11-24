@@ -47,6 +47,9 @@ const zRawConnection = z.object({
 	wait_time: z.number(),
 	transit_distance: z.number(),
 	walk_distance: z.number(),
+	journey_start: z.number(),
+	journey_end: z.number(),
+	journey_duration: z.number(),
 	data: z.array(zRow),
 });
 
@@ -102,6 +105,10 @@ export const zPlannerResponse = z.object({
 			transitDistanceMeters: z.number(),
 			walkDistanceMeters: z.number(),
 			transfers: z.number(),
+			ticketTimeSeconds: z.number().openapi({
+				description:
+					"How long a time ticket must be valid: from boarding the first bus to leaving the last one (no walking). Compare with `validityMinutes` in /v1/zg/fares.",
+			}),
 			legs: z.array(z.discriminatedUnion("type", [zWalkLeg, zBusLeg])),
 		}),
 	),
@@ -220,6 +227,7 @@ export const parsePlannerResponse = (
 				transitDistanceMeters: c.transit_distance,
 				walkDistanceMeters: c.walk_distance,
 				transfers: Math.max(0, legs.filter((l) => l.type === "bus").length - 1),
+				ticketTimeSeconds: c.journey_duration,
 				legs,
 			};
 		}),

@@ -70,6 +70,7 @@ export const mzkClient = {
 		baseUrl: ZG_BASE_URL,
 		path: ({ stopId }: { stopId: number }) =>
 			`/TimeTable/GetTimetableReal?busStopId=${stopId}`,
+		cacheSeconds: 5, // shared by /stops/{id}/departures and /departures/nearby
 		format: "xml",
 		xmlParser: createAttributeXmlParser(["Stop", "Day", "R", "S"]),
 		schema: zGetDeparturesUpstream,

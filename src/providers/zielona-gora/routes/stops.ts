@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { CACHE, edgeCache } from "../../../lib/cache";
 import type { AppEnv } from "../../../lib/env";
+import { distanceMeters, normalizeName, parseLatLon } from "../../../lib/geo";
 import { UpstreamError } from "../../../lib/errors";
 import { annotate } from "../../../lib/tracing";
 import {
@@ -17,21 +18,6 @@ import { GtfsStore } from "../gtfs/store";
 import { mzkClient } from "../client";
 import { zDeparturesResponse } from "../schema/departures";
 import { zStopDetailsResponse, zStopsResponse } from "../schema/stops";
-
-/** Lower-case, no Polish diacritics: "Łężyca" → "lezyca". */
-const normalize = (s: string) =>
-	s
-		.toLowerCase()
-		.replace(/ł/g, "l")
-		.normalize("NFD")
-		.replace(/[\u0300-\u036f]/g, "");
-
-/** Distance in meters (equirectangular — plenty accurate within a city). */
-const distance = (a: { lat: number; lon: number }, b: { lat: number; lon: number }) => {
-	const x = ((b.lon - a.lon) * Math.PI) / 180 * Math.cos(((a.lat + b.lat) * Math.PI) / 360);
-	const y = ((b.lat - a.lat) * Math.PI) / 180;
-	return Math.round(Math.sqrt(x * x + y * y) * 6_371_000);
-};
 
 const zStopSearchResponse = z.object({
 	stops: z.array(
@@ -96,19 +82,18 @@ export const stops = new Hono<AppEnv>()
 		async (c) => {
 			const { q, near, limit } = c.req.valid("query");
 			const all = await new GtfsStore(c.env.ASSETS).stops();
-			const [lat, lon] = near?.split(",").map(Number) ?? [];
-			const point = lat !== undefined && lon !== undefined ? { lat, lon } : undefined;
-			const needle = q ? normalize(q) : undefined;
+			const point = near ? parseLatLon(near) : undefined;
+			const needle = q ? normalizeName(q) : undefined;
 
 			const results = all
-				.filter((s) => !needle || normalize(s.name).includes(needle))
+				.filter((s) => !needle || normalizeName(s.name).includes(needle))
 				.map((s) => ({
 					id: s.id,
 					name: s.name,
 					location: { x: s.lon, y: s.lat },
-					distanceMeters: point ? distance(point, s) : null,
+					distanceMeters: point ? distanceMeters(point, s) : null,
 					// names starting with the query rank first
-					rank: needle && normalize(s.name).startsWith(needle) ? 0 : 1,
+					rank: needle && normalizeName(s.name).startsWith(needle) ? 0 : 1,
 				}))
 				.sort(
 					(a, b) =>

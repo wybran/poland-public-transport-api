@@ -9,8 +9,6 @@ import { zielonaGora } from "./providers/zielona-gora";
 const app = new Hono<AppEnv>();
 
 app.use(cors());
-// Optional, sent by our own apps: lets traces be filtered by app version.
-// Nothing that identifies a person is recorded.
 app.use(async (c, next) => {
 	annotate({
 		"client.app": c.req.header("X-App-Name"),
@@ -22,11 +20,7 @@ app.onError(errorHandler);
 app.notFound((c) =>
 	errorResponse(c, 404, { error: "Unknown route", code: "ROUTE_NOT_FOUND" }),
 );
-// Versioned API. Within a version fields and error codes are only ever added,
-// never renamed or removed — breaking changes go to /v2.
 app.route("/v1/zg", zielonaGora);
-
-// Unversioned paths from before /v1 — served by v1, marked deprecated.
 app.all("/zg/*", async (c) => {
 	const url = new URL(c.req.url);
 	url.pathname = `/v1${url.pathname}`;
