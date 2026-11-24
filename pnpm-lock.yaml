@@ -168,19 +168,19 @@ importers:
     dependencies:
       '@hono/swagger-ui':
         specifier: ^0.6.2
-        version: 0.6.2(hono@4.7.11)
+        version: 0.6.2(hono@4.13.16)
       '@hono/zod-validator':
         specifier: ^0.7.0
-        version: 0.7.0(hono@4.7.11)(zod@3.25.64)
+        version: 0.7.0(hono@4.13.16)(zod@3.25.64)
       fast-xml-parser:
         specifier: ^5.2.5
         version: 5.2.5
       hono:
-        specifier: ^4.7.11
-        version: 4.7.11
+        specifier: ^4.13.16
+        version: 4.13.16
       hono-openapi:
         specifier: ^0.4.8
-        version: 0.4.8(@hono/zod-validator@0.7.0(hono@4.7.11)(zod@3.25.64))(hono@4.7.11)(openapi-types@12.1.3)(zod-openapi@4.2.4(zod@3.25.64))(zod@3.25.64)
+        version: 0.4.8(@hono/zod-validator@0.7.0(hono@4.13.16)(zod@3.25.64))(hono@4.13.16)(openapi-types@12.1.3)(zod-openapi@4.2.4(zod@3.25.64))(zod@3.25.64)
       wretch:
         specifier: ^2.11.0
         version: 2.11.0
@@ -823,8 +823,8 @@ packages:
       zod-openapi:
         optional: true
 
-  hono@4.7.11:
-    resolution: {integrity: sha512-rv0JMwC0KALbbmwJDEnxvQCeJh+xbS3KEWW5PC9cMJ08Ur9xgatI0HmtgYZfOdOSOeYsp5LO2cOhdI8cLEbDEQ==}
+  hono@4.13.16:
+    resolution: {integrity: sha512-AOLOEhvrV+iH92xXCnFr/5+3KjPKcI3xP63XJtX5spAnkznPdHijlIsUTpi7/9EhWqrTCekw5c5zh1K+YsVw7A==}
     engines: {node: '>=16.9.0'}
 
   humanize-ms@1.2.1:
@@ -1115,13 +1115,13 @@ snapshots:
   '@esbuild/win32-x64@0.28.2':
     optional: true
 
-  '@hono/swagger-ui@0.6.2(hono@4.7.11)':
+  '@hono/swagger-ui@0.6.2(hono@4.13.16)':
     dependencies:
-      hono: 4.7.11
+      hono: 4.13.16
 
-  '@hono/zod-validator@0.7.0(hono@4.7.11)(zod@3.25.64)':
+  '@hono/zod-validator@0.7.0(hono@4.13.16)(zod@3.25.64)':
     dependencies:
-      hono: 4.7.11
+      hono: 4.13.16
       zod: 3.25.64
 
   '@img/colour@1.1.0': {}
@@ -1435,17 +1435,17 @@ snapshots:
     dependencies:
       function-bind: 1.1.2
 
-  hono-openapi@0.4.8(@hono/zod-validator@0.7.0(hono@4.7.11)(zod@3.25.64))(hono@4.7.11)(openapi-types@12.1.3)(zod-openapi@4.2.4(zod@3.25.64))(zod@3.25.64):
+  hono-openapi@0.4.8(@hono/zod-validator@0.7.0(hono@4.13.16)(zod@3.25.64))(hono@4.13.16)(openapi-types@12.1.3)(zod-openapi@4.2.4(zod@3.25.64))(zod@3.25.64):
     dependencies:
       json-schema-walker: 2.0.0
       openapi-types: 12.1.3
     optionalDependencies:
-      '@hono/zod-validator': 0.7.0(hono@4.7.11)(zod@3.25.64)
-      hono: 4.7.11
+      '@hono/zod-validator': 0.7.0(hono@4.13.16)(zod@3.25.64)
+      hono: 4.13.16
       zod: 3.25.64
       zod-openapi: 4.2.4(zod@3.25.64)
 
-  hono@4.7.11: {}
+  hono@4.13.16: {}
 
   humanize-ms@1.2.1:
     dependencies:
