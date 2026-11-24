@@ -9,7 +9,18 @@ type EndpointConfig<P, S extends z.ZodTypeAny> = {
 	path: (params: P) => string;
 	/** Parses the upstream body and transforms it into our response shape */
 	schema: S;
-} & ({ format: "json" } | { format: "xml"; xmlParser: XMLParser });
+	/**
+	 * Cache the raw upstream body (per data center) for this many seconds, so
+	 * routes deriving different responses from one upstream call share it
+	 * (e.g. /zg/vehicles?line=27 and ?line=14 both read the full vehicle list).
+	 */
+	cacheSeconds?: number;
+} & (
+	| { format: "json" }
+	| { format: "xml"; xmlParser: XMLParser }
+	/** Raw body passed to `schema` as a string, for formats parsed by hand */
+	| { format: "text" }
+);
 
 /**
  * MZK normally answers in < 1 s but sometimes hangs for 20+ s when called from
@@ -38,6 +49,27 @@ const fetchText = (url: string): Promise<string> =>
 			);
 		});
 
+/** Upstream body cache shared by all routes, keyed by upstream URL. */
+const cachedFetchText = async (url: string, seconds: number) => {
+	const cache = typeof caches === "undefined" ? undefined : caches.default;
+	if (!cache) return fetchText(url);
+
+	const key = new Request(url);
+	const hit = await cache.match(key);
+	if (hit) return hit.text();
+
+	const text = await fetchText(url);
+	if (text.trim() !== "") {
+		await cache.put(
+			key,
+			new Response(text, {
+				headers: { "Cache-Control": `public, max-age=${seconds}` },
+			}),
+		);
+	}
+	return text;
+};
+
 /**
  * Builds a typed function that fetches an upstream endpoint,
  * parses it (XML or JSON) and validates/transforms it with the given schema.
@@ -52,7 +84,9 @@ export const createEndpoint =
 	async (params: P): Promise<z.output<S>> => {
 		const url = `${config.baseUrl}${config.path(params)}`;
 
-		const text = await fetchText(url);
+		const text = config.cacheSeconds
+			? await cachedFetchText(url, config.cacheSeconds)
+			: await fetchText(url);
 
 		// Upstreams tend to answer unknown ids with an empty body (200/204)
 		if (text.trim() === "") {
@@ -64,7 +98,9 @@ export const createEndpoint =
 			raw =
 				config.format === "xml"
 					? config.xmlParser.parse(text)
-					: JSON.parse(text);
+					: config.format === "json"
+						? JSON.parse(text)
+						: text;
 		} catch (error) {
 			throw new UpstreamError(`Unparsable upstream response: ${url}`, {
 				cause: error,

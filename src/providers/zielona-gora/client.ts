@@ -1,4 +1,5 @@
 import { XMLParser } from "fast-xml-parser";
+import { z } from "../../lib/zod";
 import { createEndpoint } from "../../lib/upstream";
 import { zGetDeparturesUpstream } from "./schema/departures";
 import { zGetStopDetailsUpstream, zGetStopsUpstream } from "./schema/stops";
@@ -24,6 +25,7 @@ export const mzkClient = {
 	getVehicles: createEndpoint({
 		baseUrl: ZG_BASE_URL,
 		path: () => "/Routes/CNR_GetVehicles?r=%all%",
+		cacheSeconds: 5, // shared by all ?line= filters; below the 10 s response ttl
 		format: "xml",
 		xmlParser: new XMLParser({
 			ignoreAttributes: true,
@@ -71,9 +73,47 @@ export const mzkClient = {
 
 	getTripTrack: createEndpoint({
 		baseUrl: ZG_BASE_URL,
-		path: ({ tripId }: { tripId: number }) =>
-			`/Trip/GetTrackJson?tripId=${tripId}&tId=0`,
+		path: ({ tripId, timetableId }: { tripId: number; timetableId: number }) =>
+			`/Trip/GetTrackJson?tripId=${tripId}&tId=${timetableId}`,
 		format: "json",
 		schema: zGetTripTrackUpstream,
 	}),
+
+	/** Trip planner. The body is XML + JS literal, parsed by schema/planner.ts. */
+	searchConnections: createEndpoint({
+		baseUrl: ZG_BASE_URL,
+		path: (q: PlannerQuery) => {
+			const params = new URLSearchParams({
+				lng1: String(q.from.lon),
+				lat1: String(q.from.lat),
+				lng2: String(q.to.lon),
+				lat2: String(q.to.lat),
+				hour: q.time,
+				date: q.date,
+				lang: "pl",
+				c: "0",
+				transfers: String(q.maxTransfers),
+				// "1" (arrive by) always returns no connections on MZK's side
+				searchMode: "0",
+				carriers: "",
+				skipRoutes: "",
+				vehicleFlags: q.lowFloor ? "N" : "",
+				transports: "",
+				walkDistanceMode: String(q.walk),
+			});
+			return `/TripPlanner/SearchConnection?${params}`;
+		},
+		format: "text",
+		schema: z.string(),
+	}),
+};
+
+export type PlannerQuery = {
+	from: { lat: number; lon: number };
+	to: { lat: number; lon: number };
+	date: string; // YYYY-MM-DD
+	time: string; // HH:MM
+	maxTransfers: number; // 0–4, 4 = MZK's "no limit"
+	walk: 0 | 1 | 2;
+	lowFloor: boolean;
 };

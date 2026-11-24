@@ -4,11 +4,14 @@ import { CACHE, edgeCache } from "../../../lib/cache";
 import type { AppEnv } from "../../../lib/env";
 import { NotFoundError } from "../../../lib/errors";
 import {
-	dateQuery,
 	errorResponses,
 	idParam,
 	jsonResponse,
+	matchesLine,
+	query,
 	slugParam,
+	zDateParam,
+	zLineParam,
 } from "../../../lib/openapi";
 import {
 	GtfsStore,
@@ -97,7 +100,8 @@ export const timetable = new Hono<AppEnv>()
 		"/stops/:stopId/schedule",
 		describeRoute({
 			operationId: "getZgStopSchedule",
-			description: "Full-day scheduled departures from a stop",
+			description:
+				"Full-day scheduled departures from a stop. `?line=27` gives the classic per-line timetable.",
 			responses: {
 				200: jsonResponse(zScheduleResponse, "Departures for the day"),
 				...errorResponses,
@@ -105,10 +109,11 @@ export const timetable = new Hono<AppEnv>()
 		}),
 		edgeCache(CACHE.DAILY),
 		idParam("stopId"),
-		dateQuery(),
+		query({ date: zDateParam, line: zLineParam }),
 		async (c) => {
 			const { stopId } = c.req.valid("param");
-			const date = c.req.valid("query").date ?? todayInPoland();
+			const { line, date: dateParam } = c.req.valid("query");
+			const date = dateParam ?? todayInPoland();
 			const gtfs = new GtfsStore(c.env.ASSETS);
 
 			const [days, stops, lines] = await Promise.all([
@@ -124,6 +129,7 @@ export const timetable = new Hono<AppEnv>()
 				await Promise.all(days.map((d) => gtfs.stopSchedule(d.serviceId, stopId)))
 			)
 				.flat()
+				.filter((d) => matchesLine(line, lineName.get(d.lineId) ?? d.lineId))
 				.sort((a, b) => a.time.localeCompare(b.time));
 
 			return c.json({
@@ -155,7 +161,7 @@ export const timetable = new Hono<AppEnv>()
 		}),
 		edgeCache(CACHE.DAILY),
 		idParam("courseId"),
-		dateQuery(),
+		query({ date: zDateParam }),
 		async (c) => {
 			const { courseId } = c.req.valid("param");
 			const date = c.req.valid("query").date ?? todayInPoland();

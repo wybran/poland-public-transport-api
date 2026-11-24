@@ -54,12 +54,14 @@ You can also use these **public instances**:
 
 | Route | Description | Cache |
 |-------|-------------|-------|
-| `GET /zg/vehicles` | All vehicles on the road: position, line, direction, delay, `courseId` | 10 s |
+| `GET /zg/vehicles?line=` | Vehicles on the road: position, line, direction, delay, `courseId`. `?line=27` or `27,14` for some lines only | 10 s |
 | `GET /zg/vehicles/:vehicleNumber/timetable` | Upcoming stops of the vehicle's current course with ETA (`vehicleNumber` = `vehicleId` from `/zg/vehicles`) | 10 s |
 | `GET /zg/stops` | All stops with location | 1 h |
+| `GET /zg/stops/search?q=&near=` | Find stops by name (diacritics-insensitive, `q=lezyca` finds Łężyca) and/or nearest to `lat,lon` | 5 min |
 | `GET /zg/stops/:stopId` | Stop details and lines serving it | 1 h |
 | `GET /zg/stops/:stopId/departures` | Real-time departures from a stop | 10 s |
-| `GET /zg/trips/:tripId/track` | Stops, times and map path of a trip (trip ids come from the MZK trip planner) | 1 h |
+| `GET /zg/planner?from=&to=` | Trip planner: connections between stops (`6`) or points (`51.93,15.49`) with walking, transfers, times and map paths. Optional `date`, `time`, `maxTransfers` (0–4), `walk` (0–2), `lowFloor` | 10 s |
+| `GET /zg/trips/:tripId/track?timetableId=` | Full course of a planner leg: stops, times, map path (`tripId`, `timetableId` from `/zg/planner`) | 1 h |
 
 **Timetable** — from MZK's official [GTFS feed](https://www.mzk.zgora.pl), rebuilt daily. `?date=YYYY-MM-DD` defaults to today (Europe/Warsaw):
 
@@ -68,7 +70,7 @@ You can also use these **public instances**:
 | `GET /zg/calendar` | Days covered by the timetable and their day type (`RO`, `SW`, `DS`, `RW`) | 5 min |
 | `GET /zg/lines` | All lines | 5 min |
 | `GET /zg/lines/:lineId` | Line's route variants: stop sequences per direction, with `shapeId` | 5 min |
-| `GET /zg/stops/:stopId/schedule?date=` | Full-day scheduled departures from a stop | 5 min |
+| `GET /zg/stops/:stopId/schedule?date=&line=` | Full-day scheduled departures from a stop; `?line=27` for a single line's timetable | 5 min |
 | `GET /zg/courses/:courseId?date=` | One course (kurs): all stops with times and route geometry | 5 min |
 | `GET /zg/shapes/:shapeId` | Route geometry | 5 min |
 
@@ -86,7 +88,8 @@ Errors are returned as `{ "error": "..." }`:
 
 Example:
 ```bash
-curl "https://api.mzk.wybran.dev/zg/stops/6/schedule?date=2026-11-28"
+curl "https://api.mzk.wybran.dev/zg/stops/6/schedule?date=2026-11-28&line=27"
+curl "https://api.mzk.wybran.dev/zg/planner?from=6&to=51.9332,15.5866&time=10:00"
 ```
 
 ## 🛠 Development

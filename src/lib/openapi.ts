@@ -61,25 +61,53 @@ export const slugParam = <K extends string>(name: K) =>
 	);
 
 /**
- * Optional `?date=YYYY-MM-DD` query parameter. Defaults to today in Poland.
+ * Validates all query parameters of a route with ONE validator — Hono keeps
+ * only the last validator's output per target, so two `validator("query")`
+ * middlewares would silently drop each other's fields.
+ * Responds 400 `{ error }` naming the first invalid parameter.
  */
-export const dateQuery = () =>
-	validator(
-		"query",
-		z.object({
-			date: z
-				.string()
-				.regex(/^\d{4}-\d{2}-\d{2}$/)
-				.optional()
-				.openapi({
-					param: { name: "date", in: "query" },
-					description: "Service day, YYYY-MM-DD. Defaults to today (Europe/Warsaw).",
-					example: "2026-11-24",
-				}),
-		}),
-		(result, c) => {
-			if (!result.success) {
-				return c.json({ error: "Invalid date: expected YYYY-MM-DD" }, 400);
-			}
-		},
-	);
+export const query = <T extends z.ZodRawShape>(shape: T) =>
+	validator("query", z.object(shape), (result, c) => {
+		if (!result.success) {
+			const issue = result.error.issues[0];
+			return c.json(
+				{ error: `Invalid ${issue?.path.join(".") ?? "query"}: ${issue?.message}` },
+				400,
+			);
+		}
+	});
+
+/** Optional `?date=YYYY-MM-DD`. Defaults to today in Poland (resolved by the route). */
+export const zDateParam = z
+	.string()
+	.regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD")
+	.optional()
+	.openapi({
+		param: { name: "date", in: "query" },
+		description: "Service day, YYYY-MM-DD. Defaults to today (Europe/Warsaw).",
+		example: "2026-11-24",
+	});
+
+/** Parsed `?line=` value: upper-cased line numbers, or undefined when not given. */
+export type LineFilter = Set<string> | undefined;
+
+/** Optional `?line=27` or `?line=27,14,N1` (case-insensitive). */
+export const zLineParam = z
+	.string()
+	.regex(
+		/^[A-Za-z0-9]{1,8}(,[A-Za-z0-9]{1,8}){0,49}$/,
+		"expected e.g. 27 or 27,14,N1",
+	)
+	.optional()
+	.transform(
+		(v): LineFilter =>
+			v ? new Set(v.split(",").map((l) => l.toUpperCase())) : undefined,
+	)
+	.openapi({
+		param: { name: "line", in: "query" },
+		description: "Only these lines, comma-separated, e.g. `27` or `27,14,N1`",
+		example: "27",
+	});
+
+export const matchesLine = (filter: LineFilter, lineNumber: string) =>
+	!filter || filter.has(lineNumber.toUpperCase());

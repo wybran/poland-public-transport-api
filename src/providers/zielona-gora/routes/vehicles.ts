@@ -1,7 +1,14 @@
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { CACHE, edgeCache } from "../../../lib/cache";
-import { errorResponses, idParam, jsonResponse } from "../../../lib/openapi";
+import {
+	errorResponses,
+	idParam,
+	jsonResponse,
+	matchesLine,
+	query,
+	zLineParam,
+} from "../../../lib/openapi";
 import { mzkClient } from "../client";
 import { zVehicleTimetableResponse } from "../schema/vehicle-timetable";
 import { zVehiclesResponse } from "../schema/vehicles";
@@ -13,16 +20,27 @@ export const vehicles = new Hono()
 		"/",
 		describeRoute({
 			operationId: "getZgVehicles",
-			description: "Get list of vehicles",
+			description:
+				"Vehicles on the road. Use `?line=27` (or `27,14`) to get only some lines — much smaller response.",
 			responses: {
 				200: jsonResponse(
 					zVehiclesResponse,
 					"List of vehicles with their current status and location",
 				),
+				400: errorResponses[400],
 				502: errorResponses[502],
 			},
 		}),
-		async (c) => c.json(await mzkClient.getVehicles()),
+		query({ line: zLineParam }),
+		async (c) => {
+			const { line } = c.req.valid("query");
+			// Always fetch all vehicles (one shared upstream response) and filter here:
+			// MZK's own filter takes a single line only and would multiply upstream calls.
+			const { vehicleList } = await mzkClient.getVehicles();
+			return c.json({
+				vehicleList: vehicleList.filter((v) => matchesLine(line, v.lineNumber)),
+			});
+		},
 	)
 
 	.get(
