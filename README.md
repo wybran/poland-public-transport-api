@@ -83,6 +83,11 @@ Times after midnight are returned as `00:04` with `"nextDay": true`.
 Responses are cached at Cloudflare's edge (per data center). Concurrent requests for the same data share one upstream call, and if MZK is down the last good response is served for up to 5 min (real-time) / 24 h (stops, tracks, timetable). Response headers:
 - `X-Cache` — `HIT`, `MISS`, `STALE` (MZK failed, serving last good data) or `BYPASS`
 - `X-Data-Age` — seconds since the data was fetched from MZK
+- `X-Data-Source: gtfs` (status `203`) — MZK was unreachable, so `/zg/stops` was built from the GTFS timetable (same ids and names, some live-only fields empty)
+
+Requests to MZK time out after 4 s and are retried once — MZK sometimes hangs for Cloudflare's servers while an immediate retry works.
+
+Apps may send `X-App-Name` / `X-App-Version` headers; they're recorded in traces to tell app versions apart. No user or device identifiers are collected.
 
 Errors are returned as `{ "error": "..." }`:
 - `400` — invalid parameter (e.g. non-numeric id, malformed date)

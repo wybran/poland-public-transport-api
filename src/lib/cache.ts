@@ -1,5 +1,6 @@
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
+import { annotate } from "./tracing";
 
 export type CachePolicy = {
 	/** Seconds a response is served from cache without asking upstream. */
@@ -97,6 +98,7 @@ export const edgeCache = (policy: CachePolicy) =>
 		if (cached) {
 			const age = ageOf(cached);
 			if (age < policy.ttl) {
+				annotate({ "cache.status": "HIT", "cache.age_s": age });
 				return serveCached(
 					cached,
 					"HIT",
@@ -114,13 +116,17 @@ export const edgeCache = (policy: CachePolicy) =>
 			toStore.headers.set("Cache-Control", `public, max-age=${policy.staleTtl}`);
 			waitUntil(c, cache.put(key, toStore));
 
+			annotate({ "cache.status": "MISS" });
 			c.header(CACHE_STATUS_HEADER, "MISS");
 			c.header(DATA_AGE_HEADER, "0");
 			c.header("Cache-Control", cacheControlHeader(policy.ttl, policy.staleTtl));
 			return;
 		}
 
-		if (c.res.status >= 500 && cached) {
+		// 5xx, or 203 = degraded fallback (e.g. stops built from GTFS): a cached
+		// copy of the real response is better
+		if ((c.res.status >= 500 || c.res.status === 203) && cached) {
+			annotate({ "cache.status": "STALE" });
 			c.res = serveCached(cached, "STALE", cacheControlHeader(ERROR_MAX_AGE));
 			return;
 		}

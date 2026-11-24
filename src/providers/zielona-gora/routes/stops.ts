@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
 import { CACHE, edgeCache } from "../../../lib/cache";
 import type { AppEnv } from "../../../lib/env";
+import { UpstreamError } from "../../../lib/errors";
+import { annotate } from "../../../lib/tracing";
 import {
 	errorResponses,
 	idParam,
@@ -125,14 +127,43 @@ export const stops = new Hono<AppEnv>()
 		"/",
 		describeRoute({
 			operationId: "getZgStops",
-			description: "List of all stops",
+			description:
+				"List of all stops. If MZK is unreachable and nothing is cached, returns 203 with the list built from the GTFS timetable (`X-Data-Source: gtfs`; `number`, `configId`, `kind` empty).",
 			responses: {
 				200: jsonResponse(zStopsResponse, "All stops with location"),
 				502: errorResponses[502],
 			},
 		}),
 		edgeCache(CACHE.STATIC),
-		async (c) => c.json({ stops: await mzkClient.getStops() }),
+		async (c) => {
+			try {
+				return c.json({ stops: await mzkClient.getStops() });
+			} catch (error) {
+				if (!(error instanceof UpstreamError)) throw error;
+				// MZK down and nothing cached yet: build the list from the GTFS feed
+				// (same stop ids and names). 203 = not the original source, and the
+				// edge cache only keeps 200s, so the real list replaces it next time.
+				annotate({ "data.source": "gtfs-fallback" });
+				const gtfsStops = await new GtfsStore(c.env.ASSETS).stops();
+				c.header("X-Data-Source", "gtfs");
+				return c.json(
+					{
+						stops: gtfsStops.map((s) => ({
+							id: s.id,
+							name: s.name,
+							number: "",
+							configId: 0,
+							location: { x: s.lon, y: s.lat },
+							vehicleType: "A",
+							realTimetableType: 0,
+							hasTimetable: true,
+							kind: "",
+						})),
+					},
+					203,
+				);
+			}
+		},
 	)
 
 	.get(
