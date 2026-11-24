@@ -40,6 +40,7 @@ This project is **proudly powered by Cloudflare Workers**. You can deploy your o
 [![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/konhi/poland-public-transport-api)
 
 You can also use these **public instances**:
+- [https://api.mzk.wybran.dev/docs](https://api.mzk.wybran.dev/docs)
 - [https://poland-public-transport.konhi.workers.dev/](https://poland-public-transport.konhi.workers.dev/)
 
 ## 📖 Documentation
@@ -85,7 +86,7 @@ Errors are returned as `{ "error": "..." }`:
 
 Example:
 ```bash
-curl "https://<your-instance>/zg/stops/6/schedule?date=2026-11-28"
+curl "https://api.mzk.wybran.dev/zg/stops/6/schedule?date=2026-11-28"
 ```
 
 ## 🛠 Development

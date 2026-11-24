@@ -19,7 +19,7 @@ export const registerDocs = (app: Hono<AppEnv>) => {
 				servers: [
 					{ url: "/", description: "Current server" },
 					{
-						url: "https://poland-public-transport-api.konhi.workers.dev",
+						url: "https://api.mzk.wybran.dev",
 						description: "Production Server",
 					},
 				],
