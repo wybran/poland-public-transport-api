@@ -6,7 +6,9 @@ import {
 	errorResponses,
 	idParam,
 	jsonResponse,
+	matchesLine,
 	query,
+	zLineParam,
 } from "../../../lib/openapi";
 import { z, zLocation } from "../../../lib/zod";
 import { GtfsStore } from "../gtfs/store";
@@ -36,6 +38,17 @@ const zStopSearchResponse = z.object({
 			name: z.string(),
 			location: zLocation,
 			distanceMeters: z.number().nullable().openapi({ description: "Set when `near` is given" }),
+		}),
+	),
+});
+
+const zStopsWithLinesResponse = z.object({
+	stops: z.array(
+		z.object({
+			id: z.number(),
+			name: z.string(),
+			location: zLocation,
+			lines: z.array(z.string()).openapi({ example: ["14", "27", "44"] }),
 		}),
 	),
 });
@@ -120,6 +133,39 @@ export const stops = new Hono<AppEnv>()
 		}),
 		edgeCache(CACHE.STATIC),
 		async (c) => c.json({ stops: await mzkClient.getStops() }),
+	)
+
+	.get(
+		"/with-lines",
+		describeRoute({
+			operationId: "getZgStopsWithLines",
+			description:
+				"All stops with the lines serving them, in one request — for map markers and line filters. `?line=27` (or `27,14`) keeps only stops of those lines.",
+			responses: {
+				200: jsonResponse(zStopsWithLinesResponse, "Stops with their lines"),
+				400: errorResponses[400],
+				502: errorResponses[502],
+			},
+		}),
+		edgeCache(CACHE.DAILY),
+		query({ line: zLineParam }),
+		async (c) => {
+			const { line } = c.req.valid("query");
+			const gtfs = new GtfsStore(c.env.ASSETS);
+			const [all, stopLines] = await Promise.all([gtfs.stops(), gtfs.stopLines()]);
+
+			const result = all
+				.map((s) => ({
+					id: s.id,
+					name: s.name,
+					location: { x: s.lon, y: s.lat },
+					lines: stopLines[s.id] ?? [],
+				}))
+				.filter((s) => s.lines.length > 0)
+				.filter((s) => !line || s.lines.some((l) => matchesLine(line, l)));
+
+			return c.json({ stops: result });
+		},
 	)
 
 	.get(

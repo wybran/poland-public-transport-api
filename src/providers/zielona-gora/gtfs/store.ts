@@ -8,6 +8,7 @@ import {
 	type GtfsMeta,
 	type GtfsShape,
 	type GtfsStop,
+	type GtfsStopLines,
 	type GtfsTrip,
 	type GtfsTripBucket,
 } from "./files";
@@ -42,6 +43,7 @@ export class GtfsStore {
 
 	calendar = () => this.read<GtfsCalendarDay[]>(GTFS_PATHS.calendar);
 	stops = () => this.read<GtfsStop[]>(GTFS_PATHS.stops);
+	stopLines = () => this.read<GtfsStopLines>(GTFS_PATHS.stopLines);
 	lines = () => this.read<GtfsLine[]>(GTFS_PATHS.lines);
 	line = (lineId: string) => this.read<GtfsLineDetails>(GTFS_PATHS.line(lineId));
 	shape = (shapeId: string) => this.read<GtfsShape>(GTFS_PATHS.shape(shapeId));

@@ -25,6 +25,7 @@ import {
 	type GtfsMeta,
 	type GtfsShape,
 	type GtfsStop,
+	type GtfsStopLines,
 	type GtfsTrip,
 	type GtfsTripBucket,
 } from "../../src/providers/zielona-gora/gtfs/files.ts";
@@ -357,6 +358,20 @@ const meta: GtfsMeta = {
 emit(GTFS_PATHS.meta, meta);
 emit(GTFS_PATHS.calendar, calendarDays);
 emit(GTFS_PATHS.lines, lines);
+
+// stop → lines stopping there (boarding or alighting), for map filters
+const lineName = new Map(lines.map((l) => [l.id, l.name]));
+const linesAtStop = new Map<string, Set<string>>();
+for (const [key, departures] of schedules) {
+	const stopId = key.split("|")[1] ?? "";
+	const set = linesAtStop.get(stopId) ?? new Set<string>();
+	for (const d of departures) set.add(lineName.get(d.lineId) ?? d.lineId);
+	linesAtStop.set(stopId, set);
+}
+const stopLines: GtfsStopLines = Object.fromEntries(
+	[...linesAtStop].map(([stopId, set]) => [stopId, [...set].sort(naturalCompare)]),
+);
+emit(GTFS_PATHS.stopLines, stopLines);
 emit(
 	GTFS_PATHS.stops,
 	stops.map(

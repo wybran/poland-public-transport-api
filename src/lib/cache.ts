@@ -13,6 +13,8 @@ export const CACHE = {
 	REALTIME: { ttl: 10, staleTtl: 5 * 60 },
 	/** Rarely changing data: stops, tracks. Fallback for a day. */
 	STATIC: { ttl: 60 * 60, staleTtl: 24 * 60 * 60 },
+	/** Announcements: refresh every minute, fall back for an hour. */
+	ALERTS: { ttl: 60, staleTtl: 60 * 60 },
 	/** Timetable data that depends on "today" — short ttl so it rolls over soon after midnight. */
 	DAILY: { ttl: 5 * 60, staleTtl: 24 * 60 * 60 },
 } as const satisfies Record<string, CachePolicy>;

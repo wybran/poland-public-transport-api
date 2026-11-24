@@ -12,6 +12,7 @@ export const GTFS_PATHS = {
 	meta: "/gtfs/meta.json",
 	calendar: "/gtfs/calendar.json",
 	stops: "/gtfs/stops.json",
+	stopLines: "/gtfs/stop-lines.json",
 	lines: "/gtfs/lines.json",
 	line: (lineId: string) => `/gtfs/lines/${encodeURIComponent(lineId)}.json`,
 	stopSchedule: (serviceId: string, stopId: number) =>
@@ -46,6 +47,9 @@ export type GtfsStop = {
 	lat: number;
 	lon: number;
 };
+
+/** Stop id → line names (sorted) of every line stopping there in the feed. */
+export type GtfsStopLines = Record<string, string[]>;
 
 export type GtfsLine = {
 	id: string;

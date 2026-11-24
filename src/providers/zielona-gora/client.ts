@@ -1,6 +1,10 @@
 import { XMLParser } from "fast-xml-parser";
 import { z } from "../../lib/zod";
 import { createEndpoint } from "../../lib/upstream";
+import {
+	zGetAlertsUpstream,
+	zGetAlertTitleUpstream,
+} from "./schema/alerts";
 import { zGetDeparturesUpstream } from "./schema/departures";
 import { zGetStopDetailsUpstream, zGetStopsUpstream } from "./schema/stops";
 import { zGetTripTrackUpstream } from "./schema/trip-track";
@@ -77,6 +81,28 @@ export const mzkClient = {
 			`/Trip/GetTrackJson?tripId=${tripId}&tId=${timetableId}`,
 		format: "json",
 		schema: zGetTripTrackUpstream,
+	}),
+
+	/** Announcement bar shown on every page of rj.mzk.zgora.pl. */
+	getAlerts: createEndpoint({
+		baseUrl: ZG_BASE_URL,
+		path: () => "/News/GetMessagesJson",
+		format: "json",
+		schema: zGetAlertsUpstream,
+	}),
+
+	getAlertTitle: createEndpoint({
+		baseUrl: ZG_BASE_URL,
+		path: ({ id }: { id: number }) => `/News/GetMessageTitle?id=${id}`,
+		format: "json",
+		schema: zGetAlertTitleUpstream,
+	}),
+
+	getAlertHtml: createEndpoint({
+		baseUrl: ZG_BASE_URL,
+		path: ({ id }: { id: number }) => `/News/GetMessageHtml?id=${id}`,
+		format: "text",
+		schema: z.string(),
 	}),
 
 	/** Trip planner. The body is XML + JS literal, parsed by schema/planner.ts. */

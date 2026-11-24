@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../lib/env";
+import { alerts } from "./routes/alerts";
 import { planner } from "./routes/planner";
 import { stops } from "./routes/stops";
 import { timetable } from "./routes/timetable";
@@ -15,4 +16,5 @@ export const zielonaGora = new Hono<AppEnv>()
 	.route("/stops", stops)
 	.route("/trips", trips)
 	.route("/planner", planner)
+	.route("/alerts", alerts)
 	.route("/", timetable);
