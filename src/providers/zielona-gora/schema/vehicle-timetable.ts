@@ -11,10 +11,10 @@ export const zVehicleTimetableResponse = z.object({
 			sequence: z.number(),
 			id: z.number(),
 			name: z.string(),
-			displayTime: z.string().openapi({
+			displayTime: z.string().meta({
 				description: 'e.g. "5 min" or "19:31"',
 			}),
-			displayMode: z.number().openapi({
+			displayMode: z.number().meta({
 				description:
 					"1 = less than a minute, 2 = relative minutes, 3 = clock time",
 			}),

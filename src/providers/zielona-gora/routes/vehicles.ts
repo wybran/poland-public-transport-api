@@ -39,8 +39,7 @@ export const vehicles = new Hono()
 				.regex(/^\d{1,6}(,\d{1,6}){0,49}$/, "expected e.g. 328 or 328,344")
 				.optional()
 				.transform((v) => (v ? new Set(v.split(",").map(Number)) : undefined))
-				.openapi({
-					param: { name: "vehicle", in: "query" },
+				.meta({
 					description: "Vehicle ids (side numbers), comma-separated",
 					example: "328",
 				}),
@@ -49,8 +48,7 @@ export const vehicles = new Hono()
 				.int()
 				.positive()
 				.optional()
-				.openapi({
-					param: { name: "courseId", in: "query" },
+				.meta({
 					description: "The vehicle currently running this course",
 					example: 2421,
 				}),

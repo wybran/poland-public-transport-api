@@ -22,13 +22,13 @@ export const zAlertsResponse = z.object({
 	alerts: z.array(
 		z.object({
 			text: z.string(),
-			html: z.string().openapi({ description: "As published by MZK (may contain HTML)" }),
+			html: z.string().meta({ description: "As published by MZK (may contain HTML)" }),
 		}),
 	),
 });
 
 export const zGetAlertsUpstream = z
-	.array(z.object({ message: z.string() }).passthrough())
+	.array(z.looseObject({ message: z.string() }))
 	.transform(
 		(messages): z.infer<typeof zAlertsResponse> => ({
 			alerts: messages

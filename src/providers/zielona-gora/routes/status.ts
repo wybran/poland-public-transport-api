@@ -8,35 +8,35 @@ import { z } from "../../../lib/zod";
 import { mzkClient } from "../client";
 import { GtfsStore, httpDateToIso, todayInPoland } from "../gtfs/store";
 
-const zErrorCode = z.string().nullable().openapi({
+const zErrorCode = z.string().nullable().meta({
 	description: "Error code (as in error responses) when the check failed",
 });
 
 const zStatusResponse = z.object({
-	status: z.enum(["ok", "degraded"]).openapi({
+	status: z.enum(["ok", "degraded"]).meta({
 		description:
 			"`degraded` when live data is unavailable or today isn't covered by the timetable — show a notice in the app",
 	}),
 	checkedAt: z.string(),
 	live: z.object({
-		ok: z.boolean().openapi({ description: "MZK's live system answered" }),
+		ok: z.boolean().meta({ description: "MZK's live system answered" }),
 		responseMs: z.number().nullable(),
-		vehicles: z.number().nullable().openapi({ description: "Vehicles currently reported" }),
+		vehicles: z.number().nullable().meta({ description: "Vehicles currently reported" }),
 		errorCode: zErrorCode,
 	}),
 	timetable: z.object({
-		ok: z.boolean().openapi({ description: "Today is covered by the timetable" }),
+		ok: z.boolean().meta({ description: "Today is covered by the timetable" }),
 		version: z.string().nullable(),
 		validFrom: z.string().nullable(),
 		validTo: z.string().nullable(),
 		publishedAt: z.string().nullable(),
-		daysLeft: z.number().nullable().openapi({
+		daysLeft: z.number().nullable().meta({
 			description: "Days until `validTo` (0 = last day). Warn users when it gets low.",
 		}),
 		errorCode: zErrorCode,
 	}),
 	alerts: z.object({
-		count: z.number().nullable().openapi({ description: "Active announcements, see /v1/zg/alerts" }),
+		count: z.number().nullable().meta({ description: "Active announcements, see /v1/zg/alerts" }),
 		errorCode: zErrorCode,
 	}),
 });

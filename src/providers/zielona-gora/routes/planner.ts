@@ -22,8 +22,7 @@ const zPoint = (name: "from" | "to", example: string) =>
 			/^(\d+|-?\d{1,3}(\.\d+)?,-?\d{1,3}(\.\d+)?)$/,
 			"expected a stop id (e.g. 6) or lat,lon (e.g. 51.9358,15.4960)",
 		)
-		.openapi({
-			param: { name, in: "query", required: true },
+		.meta({
 			description: "Stop id or `lat,lon`",
 			example,
 		});
@@ -61,8 +60,7 @@ export const planner = new Hono<AppEnv>().get(
 			.string()
 			.regex(/^([01]\d|2[0-3]):[0-5]\d$/, "expected HH:MM")
 			.optional()
-			.openapi({
-				param: { name: "time", in: "query" },
+			.meta({
 				description: "Departure time HH:MM, defaults to now (Europe/Warsaw)",
 				example: "10:00",
 			}),
@@ -72,8 +70,7 @@ export const planner = new Hono<AppEnv>().get(
 			.min(0)
 			.max(4)
 			.default(4)
-			.openapi({
-				param: { name: "maxTransfers", in: "query" },
+			.meta({
 				description: "0–4 (4 = no limit, MZK's default)",
 			}),
 		walk: z.coerce
@@ -82,12 +79,10 @@ export const planner = new Hono<AppEnv>().get(
 			.min(0)
 			.max(2)
 			.default(1)
-			.openapi({
-				param: { name: "walk", in: "query" },
+			.meta({
 				description: "How far you're willing to walk: 0 = short, 1 = normal, 2 = long",
 			}),
-		lowFloor: zBool.openapi({
-			param: { name: "lowFloor", in: "query" },
+		lowFloor: zBool.meta({
 			description: "`true`: low-floor vehicles only",
 		}),
 	}),

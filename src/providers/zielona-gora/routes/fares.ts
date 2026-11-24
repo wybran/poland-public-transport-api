@@ -7,15 +7,15 @@ import { z } from "../../../lib/zod";
 import { FARES } from "../fares";
 
 const zPrice = z.object({
-	normal: z.number().nullable().openapi({ description: "Grosze (300 = 3,00 zł); null = not offered" }),
-	reduced: z.number().nullable().openapi({ description: "Grosze, reduced fare (ulgowy); null = not offered" }),
+	normal: z.number().nullable().meta({ description: "Grosze (300 = 3,00 zł); null = not offered" }),
+	reduced: z.number().nullable().meta({ description: "Grosze, reduced fare (ulgowy); null = not offered" }),
 });
 
 const zZoneId = z.enum(["A", "B", "A+B", "ALL"]);
 
 const zFaresResponse = z.object({
 	source: z.string(),
-	checkedAt: z.string().openapi({ description: "When prices were last copied from MZK's site" }),
+	checkedAt: z.string().meta({ description: "When prices were last copied from MZK's site" }),
 	currency: z.literal("PLN"),
 	priceUnit: z.literal("grosz"),
 	zones: z.array(z.object({ id: zZoneId, name: z.string(), description: z.string().nullable() })),
@@ -27,7 +27,7 @@ const zFaresResponse = z.object({
 			medium: z.enum(["paper", "electronic", "mobile"]),
 			name: z.string(),
 			price: zPrice,
-			validityMinutes: z.number().nullable().openapi({
+			validityMinutes: z.number().nullable().meta({
 				description: "Time limit after validation — compare with `ticketTimeSeconds` of a planner connection",
 			}),
 			validityDays: z.number().nullable(),

@@ -1,9 +1,10 @@
-import { resolver, validator } from "hono-openapi/zod";
+import { resolver, validator } from "hono-openapi";
+import type { Context } from "hono";
 import { errorResponse } from "./errors";
 import { z, zErrorResponse } from "./zod";
 
 /** OpenAPI response object for a JSON body described by a Zod schema. */
-export const jsonResponse = (schema: z.ZodTypeAny, description: string) => ({
+export const jsonResponse = (schema: z.ZodType, description: string) => ({
 	description,
 	content: { "application/json": { schema: resolver(schema) } },
 });
@@ -17,12 +18,19 @@ export const errorResponses = {
 	),
 };
 
-const zId = (name: string) =>
-	z.coerce
-		.number()
-		.int()
-		.positive()
-		.openapi({ param: { name, in: "path" } });
+const zId = () => z.coerce.number().int().positive();
+
+type Issue = { message: string; path?: ReadonlyArray<PropertyKey | { key: PropertyKey }> };
+
+/** Name of the parameter a validation issue is about ("query" if unknown). */
+const issueParam = (issue: Issue | undefined) =>
+	issue?.path
+		?.map((p) => String(typeof p === "object" ? p.key : p))
+		.join(".") || "query";
+
+/** 400 `INVALID_PARAMETER` response for a failed validation. */
+const invalidParameter = (c: Context, param: string, error: string) =>
+	errorResponse(c, 400, { error, code: "INVALID_PARAMETER", param });
 
 /**
  * Validates a numeric path parameter and documents it in OpenAPI.
@@ -31,14 +39,10 @@ const zId = (name: string) =>
 export const idParam = <K extends string>(name: K) =>
 	validator(
 		"param",
-		z.object({ [name]: zId(name) } as Record<K, ReturnType<typeof zId>>),
+		z.object({ [name]: zId() } as Record<K, ReturnType<typeof zId>>),
 		(result, c) => {
 			if (!result.success) {
-				return errorResponse(c, 400, {
-					error: `Invalid ${name}: must be a positive integer`,
-					code: "INVALID_PARAMETER",
-					param: name,
-				});
+				return invalidParameter(c, name, `Invalid ${name}: must be a positive integer`);
 			}
 		},
 	);
@@ -50,18 +54,11 @@ export const slugParam = <K extends string>(name: K) =>
 	validator(
 		"param",
 		z.object({
-			[name]: z
-				.string()
-				.regex(/^[A-Za-z0-9_-]{1,32}$/)
-				.openapi({ param: { name, in: "path" } }),
+			[name]: z.string().regex(/^[A-Za-z0-9_-]{1,32}$/),
 		} as Record<K, z.ZodString>),
 		(result, c) => {
 			if (!result.success) {
-				return errorResponse(c, 400, {
-					error: `Invalid ${name}`,
-					code: "INVALID_PARAMETER",
-					param: name,
-				});
+				return invalidParameter(c, name, `Invalid ${name}`);
 			}
 		},
 	);
@@ -75,13 +72,9 @@ export const slugParam = <K extends string>(name: K) =>
 export const query = <T extends z.ZodRawShape>(shape: T) =>
 	validator("query", z.object(shape), (result, c) => {
 		if (!result.success) {
-			const issue = result.error.issues[0];
-			const param = issue?.path.join(".") || "query";
-			return errorResponse(c, 400, {
-				error: `Invalid ${param}: ${issue?.message}`,
-				code: "INVALID_PARAMETER",
-				param,
-			});
+			const issue = (result.error as readonly Issue[])[0];
+			const param = issueParam(issue);
+			return invalidParameter(c, param, `Invalid ${param}: ${issue?.message ?? "invalid value"}`);
 		}
 	});
 
@@ -90,8 +83,7 @@ export const zDateParam = z
 	.string()
 	.regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD")
 	.optional()
-	.openapi({
-		param: { name: "date", in: "query" },
+	.meta({
 		description: "Service day, YYYY-MM-DD. Defaults to today (Europe/Warsaw).",
 		example: "2026-11-24",
 	});
@@ -111,8 +103,7 @@ export const zLineParam = z
 		(v): LineFilter =>
 			v ? new Set(v.split(",").map((l) => l.toUpperCase())) : undefined,
 	)
-	.openapi({
-		param: { name: "line", in: "query" },
+	.meta({
 		description: "Only these lines, comma-separated, e.g. `27` or `27,14,N1`",
 		example: "27",
 	});

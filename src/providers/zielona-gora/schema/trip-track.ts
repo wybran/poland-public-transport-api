@@ -45,8 +45,8 @@ export const zTripTrackResponse = z.object({
 			number: z.string(),
 			location: zLocation,
 			street: z.string(),
-			departureTime: z.string().nullable().openapi({ description: "HH:MM" }),
-			onRequest: z.boolean().openapi({
+			departureTime: z.string().nullable().meta({ description: "HH:MM" }),
+			onRequest: z.boolean().meta({
 				description: "Request stop (na żądanie) for the segment leaving this stop",
 			}),
 		}),

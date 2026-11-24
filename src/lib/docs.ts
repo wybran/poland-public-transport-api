@@ -1,7 +1,7 @@
 import { swaggerUI } from "@hono/swagger-ui";
 import type { Hono } from "hono";
 import type { AppEnv } from "./env";
-import { openAPISpecs } from "hono-openapi";
+import { openAPIRouteHandler } from "hono-openapi";
 
 const TITLE = "Poland Public Transport API";
 
@@ -9,7 +9,7 @@ const TITLE = "Poland Public Transport API";
 export const registerDocs = (app: Hono<AppEnv>) => {
 	app.get(
 		"/openapi",
-		openAPISpecs(app, {
+		openAPIRouteHandler(app, {
 			documentation: {
 				info: {
 					title: TITLE,

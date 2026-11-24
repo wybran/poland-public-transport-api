@@ -37,10 +37,10 @@ const zRawDay = z.object({
 export const zDeparture = z.object({
 	lineNumber: z.string(),
 	direction: z.string(),
-	displayTime: z.string().openapi({
+	displayTime: z.string().meta({
 		description: 'Text shown on MZK boards, e.g. "3 min" or "21:13"',
 	}),
-	displayMode: z.number().openapi({
+	displayMode: z.number().meta({
 		description: "1 = less than a minute, 2 = relative minutes, 3 = clock time",
 	}),
 	secondsToDeparture: z.number(),
@@ -84,12 +84,13 @@ export const zGetDeparturesUpstream = z
 							Day: z.array(zRawDay).default([]),
 						}),
 					)
-					.nonempty(),
+					.min(1),
 			}),
 		),
 	})
 	.transform(({ Schedules }): z.infer<typeof zDeparturesResponse> => {
-		const stop = Schedules.Stop[0];
+		// .min(1) above guarantees the first stop exists
+		const stop = Schedules.Stop[0] as (typeof Schedules.Stop)[number];
 		return {
 			time: Schedules.time,
 			stop: { id: stop.id, name: stop.name, dispatchMessage: stop.ds },

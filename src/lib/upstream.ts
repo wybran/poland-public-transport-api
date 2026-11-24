@@ -5,7 +5,7 @@ import { NotFoundError, UpstreamError } from "./errors";
 import { REQUEST_HEADERS } from "./http";
 import { annotate } from "./tracing";
 
-type EndpointConfig<P, S extends z.ZodTypeAny> = {
+type EndpointConfig<P, S extends z.ZodType> = {
 	baseUrl: string;
 	path: (params: P) => string;
 	/** Parses the upstream body and transforms it into our response shape */
@@ -110,7 +110,7 @@ const cachedFetchText = async (url: string, seconds: number) => {
  * unexpected — both are turned into JSON responses by `errorHandler`.
  */
 export const createEndpoint =
-	<P = void, S extends z.ZodTypeAny = z.ZodTypeAny>(
+	<P = void, S extends z.ZodType = z.ZodType>(
 		config: EndpointConfig<P, S>,
 	) =>
 	async (params: P): Promise<z.output<S>> => {

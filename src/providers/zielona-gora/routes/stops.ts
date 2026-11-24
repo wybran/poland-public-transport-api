@@ -25,7 +25,7 @@ const zStopSearchResponse = z.object({
 			id: z.number(),
 			name: z.string(),
 			location: zLocation,
-			distanceMeters: z.number().nullable().openapi({ description: "Set when `near` is given" }),
+			distanceMeters: z.number().nullable().meta({ description: "Set when `near` is given" }),
 		}),
 	),
 });
@@ -36,7 +36,7 @@ const zStopsWithLinesResponse = z.object({
 			id: z.number(),
 			name: z.string(),
 			location: zLocation,
-			lines: z.array(z.string()).openapi({ example: ["14", "27", "44"] }),
+			lines: z.array(z.string()).meta({ example: ["14", "27", "44"] }),
 		}),
 	),
 });
@@ -61,13 +61,12 @@ export const stops = new Hono<AppEnv>()
 				.min(1)
 				.max(64)
 				.optional()
-				.openapi({ param: { name: "q", in: "query" }, example: "dworzec" }),
+				.meta({ example: "dworzec" }),
 			near: z
 				.string()
 				.regex(/^-?\d{1,3}(\.\d+)?,-?\d{1,3}(\.\d+)?$/, "expected lat,lon")
 				.optional()
-				.openapi({
-					param: { name: "near", in: "query" },
+				.meta({
 					description: "`lat,lon` — sort by distance",
 					example: "51.9358,15.4960",
 				}),
@@ -77,7 +76,7 @@ export const stops = new Hono<AppEnv>()
 				.min(1)
 				.max(100)
 				.default(20)
-				.openapi({ param: { name: "limit", in: "query" } }),
+				,
 		}),
 		async (c) => {
 			const { q, near, limit } = c.req.valid("query");
@@ -222,8 +221,7 @@ export const stops = new Hono<AppEnv>()
 				.int()
 				.positive()
 				.optional()
-				.openapi({
-					param: { name: "courseId", in: "query" },
+				.meta({
 					description: "Only this course (from departures, schedules or /v1/zg/vehicles)",
 					example: 2421,
 				}),

@@ -26,7 +26,7 @@ const zNearbyResponse = z.object({
 				distanceMeters: z.number(),
 			}),
 			departures: z.array(zDeparture),
-			errorCode: z.string().nullable().openapi({
+			errorCode: z.string().nullable().meta({
 				description: "Set when this stop's departures couldn't be loaded (others still are)",
 			}),
 		}),
@@ -55,8 +55,7 @@ export const departures = new Hono<AppEnv>().get(
 		near: z
 			.string()
 			.regex(/^-?\d{1,3}(\.\d+)?,-?\d{1,3}(\.\d+)?$/, "expected lat,lon")
-			.openapi({
-				param: { name: "near", in: "query", required: true },
+			.meta({
 				description: "`lat,lon` of the user",
 				example: "51.9358,15.4960",
 			}),
@@ -66,8 +65,7 @@ export const departures = new Hono<AppEnv>().get(
 			.min(50)
 			.max(2000)
 			.default(500)
-			.openapi({
-				param: { name: "radius", in: "query" },
+			.meta({
 				description: "Meters, 50–2000",
 			}),
 		stops: z.coerce
@@ -76,8 +74,7 @@ export const departures = new Hono<AppEnv>().get(
 			.min(1)
 			.max(8)
 			.default(4)
-			.openapi({
-				param: { name: "stops", in: "query" },
+			.meta({
 				description: "Max stops, 1–8 (each one is a request to MZK)",
 			}),
 		perStop: z.coerce
@@ -86,8 +83,7 @@ export const departures = new Hono<AppEnv>().get(
 			.min(1)
 			.max(30)
 			.default(6)
-			.openapi({
-				param: { name: "perStop", in: "query" },
+			.meta({
 				description: "Max departures per stop",
 			}),
 		line: zLineParam,

@@ -31,8 +31,7 @@ export const trips = new Hono().get(
 			.int()
 			.nonnegative()
 			.default(0)
-			.openapi({
-				param: { name: "timetableId", in: "query" },
+			.meta({
 				description: "`timetableId` of the planner leg; optional for courses running today",
 				example: 7387,
 			}),

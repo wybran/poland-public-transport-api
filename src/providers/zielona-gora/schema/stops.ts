@@ -26,7 +26,7 @@ export const zStop = z.object({
 	location: zLocation,
 	vehicleType: z.string(),
 	realTimetableType: z.number(),
-	hasTimetable: z.boolean().openapi({
+	hasTimetable: z.boolean().meta({
 		description: "Stops without timetable are hidden on the MZK map",
 	}),
 	kind: z.string(),

@@ -13,13 +13,13 @@ export const zVehicle = z.object({
 	actualRoute: z.number(),
 	location: zLocation,
 	previousLocation: zLocation,
-	deviation: z.number().openapi({
+	deviation: z.number().meta({
 		description: "Deviation from schedule in seconds (negative = delay)",
 	}),
-	deviationText: z.string().openapi({
+	deviationText: z.string().meta({
 		description: 'Deviation as text, e.g. "-00:01:42"',
 	}),
-	status: z.number().openapi({
+	status: z.number().meta({
 		description:
 			"Vehicle state (Stan). 1/2 = on route, 3/6/7/10 = at terminus waiting for departure",
 	}),
@@ -31,7 +31,7 @@ export const zVehicle = z.object({
 	nextDirection: z.string(),
 	secondsToDeparture: z.number(),
 	vehicleType: z.string(),
-	bearing: z.number().openapi({
+	bearing: z.number().meta({
 		description: "Heading in degrees (0 = north, clockwise); -1 when unknown",
 	}),
 	isElectric: z.boolean(),

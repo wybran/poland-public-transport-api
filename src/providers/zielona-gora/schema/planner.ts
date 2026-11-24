@@ -54,14 +54,14 @@ const zRawConnection = z.object({
 });
 
 const zPlace = z.object({
-	stopId: z.number().nullable().openapi({ description: "null for the start/destination point" }),
+	stopId: z.number().nullable().meta({ description: "null for the start/destination point" }),
 	name: z.string(),
 	location: zLocation,
 });
 
 const zTime = z.object({
-	date: z.string().openapi({ example: "2026-11-25" }),
-	time: z.string().openapi({ example: "10:07" }),
+	date: z.string().meta({ example: "2026-11-25" }),
+	time: z.string().meta({ example: "10:07" }),
 });
 
 const zWalkLeg = z.object({
@@ -75,9 +75,9 @@ const zBusLeg = z.object({
 	type: z.literal("bus"),
 	lineNumber: z.string(),
 	vehicleType: z.string(),
-	vehicleNumber: z.number().nullable().openapi({ description: "Known for vehicles already on the road" }),
-	deviationSeconds: z.number().openapi({ description: "Live delay (negative) / early (positive)" }),
-	tripId: z.number().openapi({
+	vehicleNumber: z.number().nullable().meta({ description: "Known for vehicles already on the road" }),
+	deviationSeconds: z.number().meta({ description: "Live delay (negative) / early (positive)" }),
+	tripId: z.number().meta({
 		description: "Use with /v1/zg/trips/{tripId}/track?timetableId= for the full course",
 	}),
 	timetableId: z.number(),
@@ -105,7 +105,7 @@ export const zPlannerResponse = z.object({
 			transitDistanceMeters: z.number(),
 			walkDistanceMeters: z.number(),
 			transfers: z.number(),
-			ticketTimeSeconds: z.number().openapi({
+			ticketTimeSeconds: z.number().meta({
 				description:
 					"How long a time ticket must be valid: from boarding the first bus to leaving the last one (no walking). Compare with `validityMinutes` in /v1/zg/fares.",
 			}),
