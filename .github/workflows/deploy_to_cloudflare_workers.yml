@@ -1,6 +1,6 @@
 name: Deploy
 
-# Deploys on every push to main, and once a day rebuilds the GTFS timetable
+# Deploys on every push to main, and twice a day rebuilds the GTFS timetable
 # from MZK — redeploying only when MZK published a new feed (ETag changed).
 #
 # Required repository secrets:
@@ -11,8 +11,10 @@ on:
   push:
     branches:
       - main
+  # GitHub cron is UTC. Off the full hour, when scheduled runs get delayed.
   schedule:
-    - cron: "15 3 * * *" # 04:15 / 05:15 Polish time
+    - cron: "15 3 * * *" # 04:15 / 05:15 Polish time — before the first buses
+    - cron: "15 13 * * *" # 14:15 / 15:15 — after MZK office hours, when new feeds get published
   workflow_dispatch:
 
 concurrency:
@@ -27,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Deploy
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Check GTFS feed version
         id: gtfs
@@ -41,7 +43,7 @@ jobs:
       - name: Was this feed already deployed?
         id: seen
         if: github.event_name == 'schedule'
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: .gtfs-deployed
           key: gtfs-${{ steps.gtfs.outputs.etag }}
@@ -53,10 +55,10 @@ jobs:
         # (we couldn't tell whether anything changed). Pushes always deploy.
         run: echo "deploy=${{ github.event_name != 'schedule' || (steps.seen.outputs.cache-hit != 'true' && steps.gtfs.outputs.etag != 'unknown') }}" >> "$GITHUB_OUTPUT"
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         if: steps.run.outputs.deploy == 'true'
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: steps.run.outputs.deploy == 'true'
         with:
           node-version: 24
@@ -74,7 +76,7 @@ jobs:
       # so code changes still deploy with the previous timetable.
       - name: Restore last GTFS feed
         if: steps.run.outputs.deploy == 'true'
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: .gtfs-cache
           key: gtfs-zip-${{ steps.gtfs.outputs.etag }}
@@ -95,7 +97,7 @@ jobs:
 
       - name: Save GTFS feed
         if: steps.run.outputs.deploy == 'true' && steps.built.outputs.etag != 'unknown'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         continue-on-error: true # key already exists when the feed didn't change
         with:
           path: .gtfs-cache
@@ -112,7 +114,7 @@ jobs:
         if: steps.run.outputs.deploy == 'true' && steps.built.outputs.etag != 'unknown'
         run: echo "${{ steps.built.outputs.etag }}" > .gtfs-deployed
 
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v6
         if: steps.run.outputs.deploy == 'true' && steps.built.outputs.etag != 'unknown'
         continue-on-error: true
         with:

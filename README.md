@@ -102,7 +102,7 @@ pnpm typecheck
 The timetable is stored as small JSON files in `public/gtfs/` and shipped with the Worker as [Static Assets](https://developers.cloudflare.com/workers/static-assets/) (not publicly served — the Worker reads them through the `ASSETS` binding). `public/gtfs/` is git-ignored; it's built in CI.
 
 ### Deployment
-`.github/workflows/deploy_to_cloudflare_workers.yml` deploys on every push to `main` and checks MZK's feed daily, redeploying only when a new GTFS version is published. Set these repository secrets:
+`.github/workflows/deploy_to_cloudflare_workers.yml` deploys on every push to `main` and checks MZK's feed twice a day, redeploying only when a new GTFS version is published. Set these repository secrets:
 - `CF_API_TOKEN` — Cloudflare API token with *Edit Cloudflare Workers* permission
 - `CF_ACCOUNT_ID` — your Cloudflare account id
 

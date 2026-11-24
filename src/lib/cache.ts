@@ -46,17 +46,27 @@ const ageOf = (res: Response) =>
 		),
 	);
 
+/**
+ * Cache-Control for clients and Cloudflare's Workers Caching in front of us.
+ * `stale-if-error` bounds how long Workers Caching may serve an old copy when
+ * the Worker fails — without it, it would serve stale data indefinitely.
+ */
+const cacheControlHeader = (maxAge: number, staleIfError?: number) =>
+	staleIfError
+		? `max-age=${maxAge}, stale-if-error=${staleIfError}`
+		: `max-age=${maxAge}`;
+
 /** Copy of a cached response with client-facing headers. */
 const serveCached = (
 	cached: Response,
 	status: "HIT" | "STALE",
-	maxAge: number,
+	cacheControl: string,
 ) => {
 	const res = new Response(cached.body, cached);
 	res.headers.delete(CACHED_AT_HEADER);
 	res.headers.set(CACHE_STATUS_HEADER, status);
 	res.headers.set(DATA_AGE_HEADER, String(ageOf(cached)));
-	res.headers.set("Cache-Control", `max-age=${maxAge}`);
+	res.headers.set("Cache-Control", cacheControl);
 	return res;
 };
 
@@ -85,7 +95,11 @@ export const edgeCache = (policy: CachePolicy) =>
 		if (cached) {
 			const age = ageOf(cached);
 			if (age < policy.ttl) {
-				return serveCached(cached, "HIT", policy.ttl - age);
+				return serveCached(
+					cached,
+					"HIT",
+					cacheControlHeader(policy.ttl - age, policy.staleTtl),
+				);
 			}
 		}
 
@@ -100,15 +114,15 @@ export const edgeCache = (policy: CachePolicy) =>
 
 			c.header(CACHE_STATUS_HEADER, "MISS");
 			c.header(DATA_AGE_HEADER, "0");
-			c.header("Cache-Control", `max-age=${policy.ttl}`);
+			c.header("Cache-Control", cacheControlHeader(policy.ttl, policy.staleTtl));
 			return;
 		}
 
 		if (c.res.status >= 500 && cached) {
-			c.res = serveCached(cached, "STALE", ERROR_MAX_AGE);
+			c.res = serveCached(cached, "STALE", cacheControlHeader(ERROR_MAX_AGE));
 			return;
 		}
 
 		// 4xx, or 5xx with nothing to fall back to
-		c.header("Cache-Control", `max-age=${ERROR_MAX_AGE}`);
+		c.header("Cache-Control", cacheControlHeader(ERROR_MAX_AGE));
 	});

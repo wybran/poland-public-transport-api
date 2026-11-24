@@ -1,6 +1,6 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"compatibility_date": "2025-06-04",
+	"compatibility_date": "2026-11-24",
 	"main": "src/index.ts",
 	"name": "poland-public-transport",
 	"workers_dev": true,
@@ -13,8 +13,30 @@
 		"binding": "ASSETS",
 		"run_worker_first": true
 	},
+	// Workers Caching: Cloudflare serves cached responses in front of the Worker
+	// (tiered, with request collapsing), driven by our Cache-Control headers.
+	// Keep it here, not in the dashboard — the setting is part of each deployed version.
+	// Cache is per version, so a new GTFS deploy never mixes with the old timetable.
+	"cache": {
+		"enabled": true
+	},
 	"observability": {
 		"enabled": true,
-		"head_sampling_rate": 1
+		"head_sampling_rate": 1,
+		"redact_query_string": false,
+		"logs": {
+			"enabled": true,
+			"head_sampling_rate": 1,
+			"invocation_logs": true,
+			"persist": true
+		},
+		"traces": {
+			"enabled": true,
+			"head_sampling_rate": 1,
+			"persist": true
+		},
+		"issues": {
+			"enabled": true
+		}
 	}
 }
