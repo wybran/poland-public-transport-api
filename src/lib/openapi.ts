@@ -40,3 +40,46 @@ export const idParam = <K extends string>(name: K) =>
 			}
 		},
 	);
+
+/**
+ * Validates a short alphanumeric path parameter (e.g. line "N1", shape "538510").
+ */
+export const slugParam = <K extends string>(name: K) =>
+	validator(
+		"param",
+		z.object({
+			[name]: z
+				.string()
+				.regex(/^[A-Za-z0-9_-]{1,32}$/)
+				.openapi({ param: { name, in: "path" } }),
+		} as Record<K, z.ZodString>),
+		(result, c) => {
+			if (!result.success) {
+				return c.json({ error: `Invalid ${name}` }, 400);
+			}
+		},
+	);
+
+/**
+ * Optional `?date=YYYY-MM-DD` query parameter. Defaults to today in Poland.
+ */
+export const dateQuery = () =>
+	validator(
+		"query",
+		z.object({
+			date: z
+				.string()
+				.regex(/^\d{4}-\d{2}-\d{2}$/)
+				.optional()
+				.openapi({
+					param: { name: "date", in: "query" },
+					description: "Service day, YYYY-MM-DD. Defaults to today (Europe/Warsaw).",
+					example: "2026-11-24",
+				}),
+		}),
+		(result, c) => {
+			if (!result.success) {
+				return c.json({ error: "Invalid date: expected YYYY-MM-DD" }, 400);
+			}
+		},
+	);

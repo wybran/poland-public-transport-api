@@ -1,0 +1,10 @@
+{
+  // Node scripts, run with native TypeScript (`node scripts/...ts`).
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    // Node's type stripping needs explicit .ts extensions in imports
+    "allowImportingTsExtensions": true
+  },
+  "include": ["./**/*.ts"]
+}

@@ -1,11 +1,12 @@
 import { swaggerUI } from "@hono/swagger-ui";
 import type { Hono } from "hono";
+import type { AppEnv } from "./env";
 import { openAPISpecs } from "hono-openapi";
 
 const TITLE = "Poland Public Transport API";
 
 /** Serves the OpenAPI spec at /openapi and Swagger UI at /docs. */
-export const registerDocs = (app: Hono) => {
+export const registerDocs = (app: Hono<AppEnv>) => {
 	app.get(
 		"/openapi",
 		openAPISpecs(app, {

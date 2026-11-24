@@ -1,9 +1,13 @@
 {
   "name": "x",
+  "type": "module",
+  "packageManager": "pnpm@12.8.1",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy --minify",
-    "cf-typegen": "wrangler types --env-interface CloudflareBindings"
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "gtfs": "node scripts/gtfs/build.ts",
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p scripts"
   },
   "dependencies": {
     "@hono/swagger-ui": "^0.6.2",
@@ -16,6 +20,9 @@
     "zod-openapi": "^4.2.4"
   },
   "devDependencies": {
+    "@types/node": "^24.19.2",
+    "fflate": "^0.8.3",
+    "typescript": "5.8.3",
     "wrangler": "^4.4.0"
   }
 }

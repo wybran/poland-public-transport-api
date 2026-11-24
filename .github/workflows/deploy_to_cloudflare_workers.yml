@@ -1,15 +1,88 @@
+name: Deploy
+
+# Deploys on every push to main, and once a day rebuilds the GTFS timetable
+# from MZK — redeploying only when MZK published a new feed (ETag changed).
+#
+# Required repository secrets:
+#   CF_API_TOKEN   — Cloudflare API token with "Edit Cloudflare Workers" permission
+#   CF_ACCOUNT_ID  — Cloudflare account id
+
 on:
   push:
     branches:
       - main
+  schedule:
+    - cron: "15 3 * * *" # 04:15 / 05:15 Polish time
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  GTFS_URL: https://www.mzk.zgora.pl/storage/website/dla_deweloperow_gdttq.zip
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     name: Deploy
     steps:
-      - uses: actions/checkout@master
-      - name: Publish
-        uses: cloudflare/wrangler-action@1.2.0
+      - uses: actions/checkout@v4
+
+      - name: Check GTFS feed version
+        id: gtfs
+        run: |
+          etag=$(curl -sfI "$GTFS_URL" | grep -i '^etag:' | cut -d' ' -f2- | tr -cd 'A-Za-z0-9-')
+          echo "etag=${etag:-unknown}" >> "$GITHUB_OUTPUT"
+
+      # On the daily run, skip everything if this feed version was already deployed
+      - name: Was this feed already deployed?
+        id: seen
+        if: github.event_name == 'schedule'
+        uses: actions/cache/restore@v4
         with:
-          apiToken: ${{ secrets.CF_API_TOKEN }}
+          path: .gtfs-deployed
+          key: gtfs-${{ steps.gtfs.outputs.etag }}
+          lookup-only: true
+
+      - name: Decide
+        id: run
+        run: echo "deploy=${{ github.event_name != 'schedule' || steps.seen.outputs.cache-hit != 'true' }}" >> "$GITHUB_OUTPUT"
+
+      - uses: pnpm/action-setup@v4
+        if: steps.run.outputs.deploy == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.run.outputs.deploy == 'true'
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        if: steps.run.outputs.deploy == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        if: steps.run.outputs.deploy == 'true'
+        run: pnpm typecheck
+
+      - name: Build GTFS timetable
+        if: steps.run.outputs.deploy == 'true'
+        run: pnpm gtfs
+
+      - name: Deploy to Cloudflare Workers
+        if: steps.run.outputs.deploy == 'true'
+        run: pnpm run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+
+      - name: Remember deployed feed version
+        if: steps.run.outputs.deploy == 'true' && steps.gtfs.outputs.etag != 'unknown'
+        run: echo "${{ steps.gtfs.outputs.etag }}" > .gtfs-deployed
+
+      - uses: actions/cache/save@v4
+        if: steps.run.outputs.deploy == 'true' && steps.gtfs.outputs.etag != 'unknown'
+        with:
+          path: .gtfs-deployed
+          key: gtfs-${{ steps.gtfs.outputs.etag }}
