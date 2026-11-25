@@ -33,13 +33,25 @@ export const zCalendarResponse = z.object({
 	),
 });
 
+const zLineColors = {
+	color: z.string().meta({
+		description: "Line colour, `#RRGGBB` — assigned by this API (MZK publishes none), stable per line",
+		example: "#0072B2",
+	}),
+	textColor: z.string().meta({
+		description: "Text colour readable on `color` (black or white)",
+		example: "#FFFFFF",
+	}),
+};
+
 export const zLinesResponse = z.object({
-	lines: z.array(z.object({ id: z.string(), name: z.string() })),
+	lines: z.array(z.object({ id: z.string(), name: z.string(), ...zLineColors })),
 });
 
 export const zLineResponse = z.object({
 	id: z.string(),
 	name: z.string(),
+	...zLineColors,
 	variants: z.array(
 		z.object({
 			directionId: z.number(),

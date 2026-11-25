@@ -20,6 +20,7 @@ import {
 	todayInPoland,
 	toPath,
 } from "../gtfs/store";
+import { lineColors } from "../line-colors";
 import {
 	zCalendarResponse,
 	zCourseResponse,
@@ -77,7 +78,10 @@ export const timetable = new Hono<AppEnv>()
 			},
 		}),
 		edgeCache(CACHE.DAILY),
-		async (c) => c.json({ lines: await new GtfsStore(c.env.ASSETS).lines() }),
+		async (c) => {
+			const lines = await new GtfsStore(c.env.ASSETS).lines();
+			return c.json({ lines: lines.map((l) => ({ ...l, ...lineColors(l.name) })) });
+		},
 	)
 
 	.get(
@@ -94,7 +98,8 @@ export const timetable = new Hono<AppEnv>()
 		slugParam("lineId"),
 		async (c) => {
 			const { lineId } = c.req.valid("param");
-			return c.json(await new GtfsStore(c.env.ASSETS).line(lineId));
+			const line = await new GtfsStore(c.env.ASSETS).line(lineId);
+			return c.json({ ...line, ...lineColors(line.name) });
 		},
 	)
 
