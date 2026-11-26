@@ -37,6 +37,11 @@ const zStopsWithLinesResponse = z.object({
 			name: z.string(),
 			location: zLocation,
 			lines: z.array(z.string()).meta({ example: ["14", "27", "44"] }),
+			directions: z.array(z.string()).meta({
+				description:
+					"Most common headsigns of buses boarding here, busiest first (max 2) — tells apart same-named stops on opposite sides of the street",
+				example: ["OS. ŚLĄSKIE", "DRZONKÓW"],
+			}),
 		}),
 	),
 });
@@ -167,7 +172,11 @@ export const stops = new Hono<AppEnv>()
 		async (c) => {
 			const { line } = c.req.valid("query");
 			const gtfs = new GtfsStore(c.env.ASSETS);
-			const [all, stopLines] = await Promise.all([gtfs.stops(), gtfs.stopLines()]);
+			const [all, stopLines, stopDirections] = await Promise.all([
+				gtfs.stops(),
+				gtfs.stopLines(),
+				gtfs.stopDirections(),
+			]);
 
 			const result = all
 				.map((s) => ({
@@ -175,6 +184,7 @@ export const stops = new Hono<AppEnv>()
 					name: s.name,
 					location: { x: s.lon, y: s.lat },
 					lines: stopLines[s.id] ?? [],
+					directions: stopDirections[s.id] ?? [],
 				}))
 				.filter((s) => s.lines.length > 0)
 				.filter((s) => !line || s.lines.some((l) => matchesLine(line, l)));

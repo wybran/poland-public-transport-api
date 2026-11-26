@@ -25,6 +25,7 @@ import {
 	type GtfsMeta,
 	type GtfsShape,
 	type GtfsStop,
+	type GtfsStopDirections,
 	type GtfsStopLines,
 	type GtfsTrip,
 	type GtfsTripBucket,
@@ -372,6 +373,24 @@ const stopLines: GtfsStopLines = Object.fromEntries(
 	[...linesAtStop].map(([stopId, set]) => [stopId, [...set].sort(naturalCompare)]),
 );
 emit(GTFS_PATHS.stopLines, stopLines);
+
+// stop → where buses boarding there head, busiest first: "Planetarium → Os. Śląskie" vs "→ Zawadzkiego"
+const headsignsAtStop = new Map<string, Map<string, number>>();
+for (const [key, departures] of schedules) {
+	const stopId = key.split("|")[1] ?? "";
+	const counts = headsignsAtStop.get(stopId) ?? new Map<string, number>();
+	for (const d of departures) {
+		if (!d.dropOffOnly && d.headsign) counts.set(d.headsign, (counts.get(d.headsign) ?? 0) + 1);
+	}
+	headsignsAtStop.set(stopId, counts);
+}
+const stopDirections: GtfsStopDirections = Object.fromEntries(
+	[...headsignsAtStop].map(([stopId, counts]) => [
+		stopId,
+		[...counts].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([headsign]) => headsign),
+	]),
+);
+emit(GTFS_PATHS.stopDirections, stopDirections);
 emit(
 	GTFS_PATHS.stops,
 	stops.map(

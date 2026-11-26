@@ -75,7 +75,7 @@ All routes are versioned under `/v1`. Within a version fields and error codes ar
 | Route | Description | Cache |
 |-------|-------------|-------|
 | `GET /v1/zg/calendar` | Days covered by the timetable and their day type (`RO`, `SW`, `DS`, `RW`) | 5 min |
-| `GET /v1/zg/stops/with-lines?line=` | All stops with the lines serving them, in one request — for map markers; `?line=27` keeps only that line's stops | 5 min |
+| `GET /v1/zg/stops/with-lines?line=` | All stops with the lines serving them and where buses from there head (`directions`, tells same-named stops apart), in one request — for map markers; `?line=27` keeps only that line's stops | 5 min |
 | `GET /v1/zg/lines` | All lines | 5 min |
 | `GET /v1/zg/lines/:lineId` | Line's route variants: stop sequences per direction, with `shapeId` | 5 min |
 | `GET /v1/zg/stops/:stopId/schedule?date=&line=` | Full-day scheduled departures from a stop; `?line=27` for a single line's timetable | 5 min |
