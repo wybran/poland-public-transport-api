@@ -1,3 +1,4 @@
+import { env } from "cloudflare:workers";
 import type { XMLParser } from "fast-xml-parser";
 import wretch from "wretch";
 import type { z } from "zod";
@@ -32,6 +33,21 @@ type EndpointConfig<P, S extends z.ZodType> = {
 const ATTEMPT_TIMEOUT_MS = 4_000;
 const ATTEMPTS = 2;
 
+/**
+ * Optional relay through our own Polish VPS (nginx), for when MZK blocks
+ * Cloudflare's IPs. Flag `MZK_PROXY` (var): "fallback" = direct first, proxy
+ * on the retry; "always" = proxy only; unset/anything else = off.
+ * `MZK_PROXY_URL` + `MZK_PROXY_TOKEN` are secrets (`wrangler secret put`).
+ */
+const proxy = env as {
+	MZK_PROXY?: string;
+	MZK_PROXY_URL?: string;
+	MZK_PROXY_TOKEN?: string;
+};
+const proxyMode = proxy.MZK_PROXY_URL ? proxy.MZK_PROXY : undefined;
+const viaProxy = (attempt: number) =>
+	proxyMode === "always" || (proxyMode === "fallback" && attempt > 1);
+
 const isTimeout = (error: unknown) =>
 	error instanceof Error &&
 	(error.name === "TimeoutError" || error.name === "AbortError");
@@ -44,23 +60,34 @@ const fetchText = async (url: string): Promise<string> => {
 	let lastError: unknown;
 
 	for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+		const proxied = viaProxy(attempt);
 		try {
-			const text = await wretch(url)
-				.headers(REQUEST_HEADERS)
+			const text = await wretch(
+				proxied
+					? url.replace(/^https?:\/\/[^/]+/, proxy.MZK_PROXY_URL ?? "")
+					: url,
+			)
+				.headers(
+					proxied
+						? { ...REQUEST_HEADERS, "X-Proxy-Token": proxy.MZK_PROXY_TOKEN ?? "" }
+						: REQUEST_HEADERS,
+				)
 				.options({ signal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS) })
 				.get()
 				.text();
 			annotate({
 				"upstream.url": url,
 				"upstream.attempts": attempt,
+				"upstream.proxied": proxied,
 				"upstream.duration_ms": Date.now() - started,
 			});
 			return text;
 		} catch (error) {
 			lastError = error;
 			// Retry only hangs/network errors; an HTTP error status won't fix itself
+			// on the same route — but a block (e.g. 403) may on the proxy
 			const httpError = error instanceof Error && "status" in error;
-			if (httpError) break;
+			if (httpError && viaProxy(attempt + 1) === proxied) break;
 		}
 	}
 
